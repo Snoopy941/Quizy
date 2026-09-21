@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# local database and uploaded PDFs
+data/
+*.db
+*.db-journal
+
+# environment
+.env
+.env*.local
+
+# desktop build output
+/dist/
+/installer-out/
+/installer/staging/
+/installer/node_modules/
+*.exe
+
+# editor and OS noise
+.freebuff/
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db

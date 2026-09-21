@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  passwordHash String
+  name         String         @default("")
+  avatar       String?
+  createdAt    DateTime       @default(now())
+  settings     UserSettings?
+  decks        Deck[]
+  sessions     StudySession[]
+}
+
+model Deck {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  description   String         @default("")
+  pdfUrl        String?
+  instructions  String         @default("")
+  density       String         @default("medium") // low | medium | high
+  pinned        Boolean        @default(false)
+  shareId       String?        @unique
+  // processing state
+  genStatus     String         @default("idle") // idle | extracting | generating | done | error
+  genProgress   Int            @default(0) // 0-100
+  genError      String?
+  lastStudiedAt DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  cards         Card[]
+  chunks        DeckChunk[]
+  sessions      StudySession[]
+
+  @@index([userId])
+}
+
+model DeckChunk {
+  id        String @id @default(cuid())
+  deckId    String
+  deck      Deck   @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  position  Int
+  heading   String @default("")
+  text      String
+  status    String @default("pending") // pending | done | failed
+  cardCount Int    @default(4)
+  cards     Card[]
+
+  @@index([deckId])
+}
+
+model Card {
+  id           String        @id @default(cuid())
+  deckId       String
+  deck         Deck          @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  chunkId      String?
+  chunk        DeckChunk?    @relation(fields: [chunkId], references: [id], onDelete: SetNull)
+  front        String
+  back         String
+  type         String        @default("definition") // definition | fill-blank | mc | true-false | short-answer
+  options      String? // JSON array for mc
+  difficulty   String        @default("medium") // easy | medium | hard
+  category     String        @default("General")
+  position     Int           @default(0)
+  // SM-2 state
+  easeFactor   Float         @default(2.5)
+  intervalDays Float         @default(0)
+  dueDate      DateTime      @default(now())
+  reps         Int           @default(0)
+  lapses       Int           @default(0)
+  timesSeen    Int           @default(0)
+  timesFailed  Int           @default(0)
+  createdAt    DateTime      @default(now())
+  sessionCards SessionCard[]
+
+  @@index([deckId])
+  @@index([dueDate])
+}
+
+model StudySession {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deckId           String?
+  deck             Deck?         @relation(fields: [deckId], references: [id], onDelete: SetNull)
+  mode             String        @default("normal") // normal | timed
+  timerMinutes     Int?
+  status           String        @default("active") // active | completed | abandoned
+  startedAt        DateTime      @default(now())
+  endedAt          DateTime?
+  cardsReviewed    Int           @default(0)
+  correctCount     Int           @default(0)
+  timeSpentSeconds Int           @default(0)
+  cards            SessionCard[]
+
+  @@index([userId])
+  @@index([deckId])
+}
+
+model SessionCard {
+  id               String       @id @default(cuid())
+  sessionId        String
+  session          StudySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  cardId           String?
+  card             Card?        @relation(fields: [cardId], references: [id], onDelete: SetNull)
+  grade            String // again | hard | good | easy | skip
+  timeSpentSeconds Int          @default(0)
+  correct          Boolean      @default(false)
+  reviewedAt       DateTime     @default(now())
+
+  @@index([sessionId])
+}
+
+model UserSettings {
+  id                  String  @id @default(cuid())
+  userId              String  @unique
+  user                User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme               String  @default("dark")
+  defaultTimerMinutes Int     @default(10)
+  cardDensity         String  @default("medium") // low | medium | high
+  soundEnabled        Boolean @default(true)
+}
