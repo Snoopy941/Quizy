@@ -1,0 +1,342 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { api, timeAgo } from "@/lib/client";
+import { siteUrl } from "@/lib/site";
+import type { DeckData, CardRow, ChunkRow } from "./types";
+import { CardList } from "./CardList";
+import { AddCardForm } from "./AddCardForm";
+
+export function DeckDetail({ deckId }: { deckId: string }) {
+  const router = useRouter();
+  const [data, setData] = useState<DeckData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [instructionsDraft, setInstructionsDraft] = useState("");
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [addedCard, setAddedCard] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await api<DeckData>(`/api/decks/${deckId}`);
+      setData(d);
+      setError(null);
+      return d;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load deck";
+      if (msg.includes("not found")) setNotFound(true);
+      else setError(msg);
+      return null;
+    }
+  }, [deckId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Poll while generating
+  useEffect(() => {
+    const st = data?.deck.genStatus;
+    if (st !== "extracting" && st !== "generating") return;
+    const t = setInterval(() => void load(), 1500);
+    return () => clearInterval(t);
+  }, [data?.deck.genStatus, load]);
+
+  const deck = data?.deck;
+  const cards = data?.cards ?? [];
+  const chunks = data?.chunks ?? [];
+  const stats = data?.stats;
+  const processing = deck?.genStatus === "extracting" || deck?.genStatus === "generating";
+
+  useEffect(() => {
+    if (deck) {
+      setNameDraft(deck.name);
+      setInstructionsDraft(deck.instructions);
+    }
+  }, [deck]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (notFound) {
+    return (
+      <div className="card p-10 text-center">
+        <h1 className="font-bold">Deck not found</h1>
+        <p className="mt-2 text-sm text-dim">It may have been deleted.</p>
+        <Link href="/library" className="btn-primary mt-4">Back to library</Link>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="card p-10 text-center text-sm text-dim">{error}</div>;
+  }
+
+  if (!data || !deck || !stats) {
+    return (
+      <div className="space-y-4">
+        <div className="skeleton h-9 w-64" />
+        <div className="skeleton h-20 w-full" />
+        <div className="skeleton h-64 w-full" />
+      </div>
+    );
+  }
+
+  const saveMeta = async (patch: Record<string, unknown>) => {
+    await api(`/api/decks/${deckId}`, { method: "PATCH", body: JSON.stringify(patch) });
+    await load();
+    router.refresh();
+  };
+
+  const startRegenerateDeck = async () => {
+    if (!confirm("Re-run AI generation on the PDF? Existing cards and scheduling state will be replaced.")) return;
+    setMenuOpen(false);
+    try {
+      await api(`/api/decks/${deckId}/generate`, { method: "POST", body: JSON.stringify({ reprocess: true }) });
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed");
+    }
+  };
+
+  const deleteDeck = async () => {
+    await api(`/api/decks/${deckId}`, { method: "DELETE" });
+    router.push("/library");
+  };
+
+  const startShare = async () => {
+    setMenuOpen(false);
+    try {
+      let sid = deck.shareId;
+      if (!sid) {
+        const res = await api<{ shareId: string }>(`/api/decks/${deckId}/share`, { method: "POST" });
+        sid = res.shareId;
+        setData((prev) => (prev ? { ...prev, deck: { ...prev.deck, shareId: sid! } } : prev));
+      }
+      await navigator.clipboard?.writeText(`${siteUrl()}/share/${sid}`).catch(() => {});
+      alert("Share link copied to clipboard");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to share");
+    }
+  };
+
+  const duplicate = async () => {
+    setMenuOpen(false);
+    try {
+      const res = await api<{ deck: { id: string } }>(`/api/decks/${deckId}/duplicate`, { method: "POST" });
+      router.push(`/deck/${res.deck.id}`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to duplicate");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            {renaming ? (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  await saveMeta({ name: nameDraft });
+                  setRenaming(false);
+                }}
+                className="flex items-center gap-2"
+              >
+                <input className="input max-w-md" value={nameDraft} onChange={(e) => setNameDraft(e.target.value)} autoFocus maxLength={120} />
+                <button className="btn-primary px-3 py-2" type="submit">Save</button>
+                <button className="btn-ghost px-3 py-2" type="button" onClick={() => setRenaming(false)}>Cancel</button>
+              </form>
+            ) : (
+              <h1
+                className="cursor-text text-2xl font-bold tracking-tight hover:opacity-80"
+                title="Click to rename"
+                onClick={() => setRenaming(true)}
+              >
+                {deck.name}
+                <span className="ml-2 text-sm font-normal text-faint">✎</span>
+              </h1>
+            )}
+            <p className="mt-1 text-sm text-dim">
+              {stats.total} cards · {stats.masteryPct}% mastered
+              {deck.lastStudiedAt ? ` · last studied ${timeAgo(deck.lastStudiedAt)}` : ""}
+            </p>
+            {deck.pdfUrl ? (
+              <a href={deck.pdfUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-faint underline underline-offset-2 hover:text-dim">
+                View source PDF ↗
+              </a>
+            ) : null}
+          </div>
+          <div className="relative shrink-0">
+            <button className="btn-secondary" onClick={() => setMenuOpen(!menuOpen)}>•••</button>
+            {menuOpen ? (
+              <div className="absolute right-0 top-12 z-30 w-48 overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
+                <MenuBtn onClick={() => { setMenuOpen(false); setInstructionsOpen(true); }}>AI instructions</MenuBtn>
+                <MenuBtn onClick={() => { setMenuOpen(false); setRenaming(true); }}>Rename</MenuBtn>
+                <MenuBtn onClick={duplicate}>Duplicate</MenuBtn>
+                <MenuBtn onClick={startShare}>{deck.shareId ? "Copy share link" : "Share link"}</MenuBtn>
+                <MenuBtn onClick={() => { window.location.href = `/api/decks/${deckId}/export?format=csv`; setMenuOpen(false); }}>Export CSV</MenuBtn>
+                <MenuBtn onClick={() => { window.location.href = `/api/decks/${deckId}/export?format=json`; setMenuOpen(false); }}>Export JSON</MenuBtn>
+                <MenuBtn onClick={startRegenerateDeck}>Re-generate from PDF</MenuBtn>
+                <MenuBtn danger onClick={() => { setMenuOpen(false); setConfirmDelete(true); }}>Delete deck</MenuBtn>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        {processing ? (
+          <div className="card mt-4 p-5">
+            <div className="mb-2 flex items-center justify-between text-sm">
+              <span className="font-medium">
+                {deck.genStatus === "extracting" ? "Reading PDF…" : "Generating cards…"}
+              </span>
+              <span className="tabular-nums text-dim">{deck.genProgress}%</span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+              <div className="h-full bg-accent transition-all duration-300" style={{ width: `${Math.max(3, deck.genProgress)}%` }} />
+            </div>
+          </div>
+        ) : deck.genStatus === "error" ? (
+          <div className="card mt-4 p-5">
+            <p className="text-sm font-medium">Generation hit a problem</p>
+            <p className="mt-1 text-sm text-dim">{deck.genError}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button className="btn-secondary px-3 py-1.5 text-xs" onClick={async () => {
+                try {
+                  await api(`/api/decks/${deckId}/generate`, { method: "POST", body: JSON.stringify({ reprocess: false }) });
+                  await load();
+                } catch (err) { alert(err instanceof Error ? err.message : "Failed"); }
+              }}>Retry generation</button>
+              <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => setAddedCard(true)}>Add cards manually</button>
+              <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => setInstructionsOpen(true)}>Adjust AI instructions</button>
+            </div>
+          </div>
+        ) : null}
+
+        {!processing && cards.length > 0 ? (
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href={`/deck/${deckId}/study`} className="btn-primary">▶ Study now</Link>
+            <TimedStudyButton deckId={deckId} />
+            <Link href={`/deck/${deckId}/stats`} className="btn-secondary">Stats</Link>
+            <button className="btn-secondary" onClick={() => setAddedCard(true)}>+ Add card</button>
+          </div>
+        ) : null}
+      </div>
+
+      {addedCard ? (
+        <AddCardForm
+          deckId={deckId}
+          onDone={async (ok) => {
+            setAddedCard(false);
+            if (ok) await load();
+          }}
+        />
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatTile label="Due today" value={stats.dueToday} />
+        <StatTile label="New" value={stats.new} />
+        <StatTile label="Mastered" value={stats.mastered} />
+        <StatTile label="Learning" value={stats.learning} />
+      </div>
+
+      <CardList cards={cards} chunks={chunks} onSaved={load} deckId={deckId} />
+
+      {instructionsOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setInstructionsOpen(false)}>
+          <div className="card w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold">Instructions for the AI</h3>
+            <p className="mt-1 text-xs text-dim">
+              Applied when generating and regenerating — e.g. “Focus on formulas”, “Make harder”, “Add analogies”.
+            </p>
+            <textarea
+              className="input mt-4 min-h-24 resize-y"
+              value={instructionsDraft}
+              onChange={(e) => setInstructionsDraft(e.target.value)}
+              maxLength={500}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button className="btn-ghost" onClick={() => setInstructionsOpen(false)}>Cancel</button>
+              <button className="btn-primary" onClick={async () => {
+                await saveMeta({ instructions: instructionsDraft });
+                setInstructionsOpen(false);
+              }}>Save</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {confirmDelete ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setConfirmDelete(false)}>
+          <div className="card w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold">Delete “{deck.name}”?</h3>
+            <p className="mt-2 text-sm text-dim">Cards, schedules, and stats will be permanently removed.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>Cancel</button>
+              <button className="btn-primary" onClick={deleteDeck}>Delete</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function TimedStudyButton({ deckId }: { deckId: string }) {
+  const [open, setOpen] = useState(false);
+  const [minutes, setMinutes] = useState(10);
+  const router = useRouter();
+  return (
+    <div className="relative">
+      <button className="btn-secondary" onClick={() => setOpen(!open)}>⏱ Timed</button>
+      {open ? (
+        <div className="absolute left-0 top-12 z-30 w-52 rounded-xl border border-line bg-surface p-3 shadow-xl">
+          <p className="mb-2 text-xs font-medium text-dim">Session length</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {[5, 10, 15, 30, 60].map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMinutes(m)}
+                className={`rounded-lg border px-2 py-1.5 text-xs font-semibold tabular-nums ${
+                  minutes === m ? "border-accent bg-surface2" : "border-line text-dim hover:text-ink"
+                }`}
+              >
+                {m}m
+              </button>
+            ))}
+          </div>
+          <button className="btn-primary mt-3 w-full py-2 text-xs" onClick={() => router.push(`/deck/${deckId}/study?timed=${minutes}`)}>
+            Start {minutes}-minute session
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="card p-4">
+      <div className="text-2xl font-extrabold tabular-nums">{value}</div>
+      <div className="mt-0.5 text-xs text-dim">{label}</div>
+    </div>
+  );
+}
+
+function MenuBtn({ children, onClick, danger }: { children: React.ReactNode; onClick: () => void; danger?: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="block w-full px-4 py-2.5 text-left text-sm text-dim transition-colors hover:bg-surface2 hover:text-ink"
+    >
+      {children}
+    </button>
+  );
+}
+
+export type { CardRow, ChunkRow };
