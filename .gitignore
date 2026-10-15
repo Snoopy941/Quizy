@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+data/
+
+# build artifacts
+/dist/
+/installer-out/
+/installer/node_modules/
+/installer/staging/
+*.exe
+*.log
+*.db
+*.db-journal
+.env
+.env*.local
+next-env.d.ts
+*.tsbuildinfo
+.DS_Store

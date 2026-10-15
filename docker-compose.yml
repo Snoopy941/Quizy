@@ -1,0 +1,22 @@
+services:
+  quizy:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: "file:/app/data/quizy.db"
+      JWT_SECRET: "${JWT_SECRET:-change-me-please-with-openssl-rand-hex-32}"
+      NEXTAUTH_URL: "${NEXTAUTH_URL:-https://quizy.study}"
+      NEXT_PUBLIC_SITE_URL: "${NEXT_PUBLIC_SITE_URL:-https://quizy.study}"
+      UPLOAD_DIR: "/app/data/uploads"
+      # AI generation (optional — set MOCK_AI=1 to use the offline generator)
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENAI_BASE_URL: "${OPENAI_BASE_URL:-}"
+      OPENAI_MODEL: "${OPENAI_MODEL:-gpt-4o-mini}"
+      MOCK_AI: "${MOCK_AI:-1}"
+    volumes:
+      - quizy-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  quizy-data:

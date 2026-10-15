@@ -1,0 +1,45 @@
+QUIZY SOFTWARE LICENSE AGREEMENT
+Copyright (c) 2026 Quizy (quizy.study). All rights reserved.
+
+IMPORTANT — READ CAREFULLY BEFORE INSTALLING OR USING THIS SOFTWARE.
+
+By installing or using Quizy, you agree to be bound by the terms of this
+Agreement. If you do not agree, do not install or use the software.
+
+1. GRANT OF LICENSE
+   Quizy grants you a free, non-exclusive, non-transferable license to
+   install and use this software on any number of computers that you own
+   or control, for personal or educational purposes.
+
+2. YOUR DATA STAYS YOURS
+   Quizy runs entirely on your computer. Your PDFs, flashcards, and study
+   history are stored locally and are never uploaded to any server.
+
+3. RESTRICTIONS
+   You may not reverse engineer the software in order to create a
+   competing product, or remove or obscure the copyright notices or the
+   quizy.study branding.
+
+4. AI-GENERATED CONTENT
+   Flashcards may be generated automatically and can contain errors.
+   You are responsible for reviewing content before relying on it.
+
+5. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+   NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+   BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+   ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE SOFTWARE OR YOUR USE OF IT.
+
+6. THIRD-PARTY COMPONENTS
+   This software includes Chromium (Apache License 2.0), Node.js (MIT
+   License), and other open-source components. Their licenses are
+   included in the licenses folder installed with the application.
+
+7. TRADEMARK
+   The name Quizy and the quizy.study logo are marks of their owner and
+   may not be used to endorse or promote derivative products.
+
+Questions? Visit https://quizy.study
