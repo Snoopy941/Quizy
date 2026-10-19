@@ -1,6 +1,6 @@
 "use client";
 
-export { fmtDate, timeAgo, fmtDuration } from "./format";
+export { fmtDate, timeAgo, fmtDuration, pageLabel, sourceKindLabel, CARD_LANGUAGES, OCR_LANGUAGE_NAMES, SPEECH_LANG } from "./format";
 
 /** JSON fetch helper that throws on non-OK with the server's error message. */
 export async function api<T = unknown>(path: string, init?: RequestInit): Promise<T> {

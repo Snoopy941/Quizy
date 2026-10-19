@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { DesktopBar } from "./DesktopBar";
+import { RecoveryCodeNotice } from "./RecoveryCodeNotice";
 
 export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [name, setName] = useState("");
@@ -11,6 +12,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
 
   const isSignup = mode === "signup";
 
@@ -26,6 +28,10 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Something went wrong");
+      if (isSignup && data.recoveryCode) {
+        setRecoveryCode(data.recoveryCode);
+        return;
+      }
       window.location.href = "/";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -41,6 +47,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           <Logo size="lg" />
         </div>
 
+        {recoveryCode ? (
+          <div className="card p-6">
+            <RecoveryCodeNotice code={recoveryCode} onDone={() => (window.location.href = "/")} doneLabel="Continue to Quizy" />
+          </div>
+        ) : (
         <form onSubmit={submit} className="card p-6">
           <h1 className="mb-5 text-lg font-bold">{isSignup ? "Create your account" : "Welcome back"}</h1>
 
@@ -96,7 +107,15 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           <button type="submit" disabled={busy} className="btn-primary w-full">
             {busy ? "…" : isSignup ? "Create account" : "Sign in"}
           </button>
+          {!isSignup ? (
+            <p className="mt-4 text-center text-xs">
+              <Link href="/forgot" className="text-dim underline underline-offset-4 hover:text-ink">
+                Forgot password?
+              </Link>
+            </p>
+          ) : null}
         </form>
+        )}
 
         <p className="mt-6 text-center text-sm text-dim">
           {isSignup ? (

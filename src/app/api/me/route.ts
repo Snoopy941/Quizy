@@ -14,7 +14,14 @@ export async function GET(req: NextRequest) {
   if (!user) return unauthorized();
 
   const settings = user.settings ?? (await prisma.userSettings.create({ data: { userId } }));
-  return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt }, settings });
+  return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt }, settings: publicSettings(settings) });
+}
+
+/** Never send the stored API key back to the browser. */
+function publicSettings<T extends { aiApiKey?: string } | null>(s: T) {
+  if (!s) return s;
+  const { aiApiKey, ...rest } = s as { aiApiKey?: string } & Record<string, unknown>;
+  return { ...rest, aiHasKey: Boolean(aiApiKey), aiKeyHint: aiApiKey ? `…${aiApiKey.slice(-4)}` : "" };
 }
 
 /** Update profile (name) and/or settings. */
@@ -32,6 +39,11 @@ export async function PATCH(req: NextRequest) {
     defaultTimerMinutes?: number;
     cardDensity?: string;
     soundEnabled?: boolean;
+    aiProvider?: string;
+    aiBaseUrl?: string;
+    aiApiKey?: string;
+    aiModel?: string;
+    readAloud?: boolean;
   } = {};
   if (body.settings?.theme === "dark" || body.settings?.theme === "light") {
     settingsUpdate.theme = body.settings.theme;
@@ -45,6 +57,19 @@ export async function PATCH(req: NextRequest) {
   if (typeof body.settings?.soundEnabled === "boolean") {
     settingsUpdate.soundEnabled = body.settings.soundEnabled;
   }
+  if (typeof body.settings?.readAloud === "boolean") settingsUpdate.readAloud = body.settings.readAloud;
+  if (["auto", "builtin", "api"].includes(body.settings?.aiProvider)) {
+    settingsUpdate.aiProvider = body.settings.aiProvider;
+  }
+  if (typeof body.settings?.aiBaseUrl === "string") {
+    const u = body.settings.aiBaseUrl.trim().replace(/\/$/, "");
+    if (u && !/^https?:\/\/[^\s]+$/i.test(u)) {
+      return NextResponse.json({ error: "The API URL must start with http:// or https://" }, { status: 400 });
+    }
+    settingsUpdate.aiBaseUrl = u.slice(0, 300);
+  }
+  if (typeof body.settings?.aiApiKey === "string") settingsUpdate.aiApiKey = body.settings.aiApiKey.trim().slice(0, 400);
+  if (typeof body.settings?.aiModel === "string") settingsUpdate.aiModel = body.settings.aiModel.trim().slice(0, 120);
 
   await prisma.userSettings.upsert({
     where: { userId },
@@ -60,5 +85,5 @@ export async function PATCH(req: NextRequest) {
     where: { id: userId },
     select: { id: true, email: true, name: true, createdAt: true },
   });
-  return NextResponse.json({ ok: true, user, settings });
+  return NextResponse.json({ ok: true, user, settings: publicSettings(settings) });
 }

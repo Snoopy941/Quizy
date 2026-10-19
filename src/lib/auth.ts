@@ -12,6 +12,8 @@ function secret() {
 export interface SessionPayload {
   userId: string;
   email: string;
+  /** User.tokenVersion when issued — bumping it signs out every session. */
+  tv?: number;
 }
 
 export async function createSessionToken(payload: SessionPayload) {
@@ -26,7 +28,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
   try {
     const { payload } = await jwtVerify(token, secret());
     if (typeof payload.userId !== "string" || typeof payload.email !== "string") return null;
-    return { userId: payload.userId, email: payload.email };
+    return { userId: payload.userId, email: payload.email, tv: typeof payload.tv === "number" ? payload.tv : 0 };
   } catch {
     return null;
   }
@@ -35,7 +37,8 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
 export const sessionCookieOptions = {
   httpOnly: true,
   sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  // The desktop app is served over plain http (127.0.0.1, or the LAN for phones).
+  secure: process.env.NODE_ENV === "production" && process.env.QUIZY_PORTABLE !== "1",
   maxAge: 60 * 60 * 24 * 30, // 30 days
   path: "/",
 };

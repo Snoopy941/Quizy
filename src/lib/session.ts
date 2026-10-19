@@ -7,9 +7,10 @@ export async function getUserId(req: NextRequest): Promise<string | null> {
   if (!token) return null;
   const payload = await verifySessionToken(token);
   if (!payload) return null;
-  // Ensure user still exists
-  const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { id: true } });
-  return user?.id ?? null;
+  // Ensure the user still exists and this session wasn't signed out.
+  const user = await prisma.user.findUnique({ where: { id: payload.userId }, select: { id: true, tokenVersion: true } });
+  if (!user || (payload.tv ?? 0) !== user.tokenVersion) return null;
+  return user.id;
 }
 
 export function unauthorized() {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup", "/share"];
+const PUBLIC_PATHS = ["/login", "/signup", "/share", "/forgot"];
 
 function hasSessionCookie(req: NextRequest) {
   return Boolean(req.cookies.get("quizy_session")?.value);
