@@ -13,7 +13,7 @@ function mulberry32(seed: number) {
 }
 
 /**
- * GET /api/study/queue?deckId=...&shuffle=1&limit=40&includeAll=0
+ * GET /api/study/queue?deckId=...&shuffle=1&limit=40&includeAll=0&mode=weak
  * Returns ordered study cards. Due cards first; new cards (reps=0) woven in;
  * not-yet-due cards only when includeAll=1 or nothing is due.
  */
@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
   const shuffle = sp.get("shuffle") !== "0";
   const includeAll = sp.get("includeAll") === "1";
   const limit = Math.min(200, Math.max(1, Number(sp.get("limit") ?? 40) || 40));
+  const weak = sp.get("mode") === "weak";
 
   const cards = await getDueCards(userId, deckId);
   const eod = endOfTodayLocal();
@@ -36,8 +37,17 @@ export async function GET(req: NextRequest) {
 
   let ordered = [...due, ...fresh];
   if (!ordered.length && includeAll) ordered = ahead;
+  if (weak) {
+    // Weak spots: the cards missed most often, regardless of when they're due.
+    ordered = cards
+      .filter((c) => c.timesFailed > 0 || c.lapses > 0)
+      .map((c) => ({ c, score: (c.timesFailed + c.lapses) / Math.max(1, c.timesSeen) + c.lapses * 0.25 }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Math.min(limit, 30))
+      .map((x) => x.c);
+  }
 
-  if (shuffle && ordered.length > 1) {
+  if (shuffle && ordered.length > 1 && !weak) {
     const rand = mulberry32(Date.now() % 2147483647);
     // Fisher–Yates
     for (let i = ordered.length - 1; i > 0; i--) {
@@ -57,10 +67,18 @@ export async function GET(req: NextRequest) {
     deckId: c.deckId,
     deckName: c.deckName,
     reps: c.reps,
+    sourcePage: c.sourcePage,
+    sourceType: c.sourceType,
+    hasSource: c.hasSource,
+    previews: c.previews,
+    imageUrl: c.imageUrl,
+    figureUrl: c.figureUrl,
+    cardLanguage: c.cardLanguage,
   }));
 
   return NextResponse.json({
     cards: finalCards,
+    mode: weak ? "weak" : "normal",
     dueCount: due.length,
     newCount: fresh.length,
     totalAvailable: cards.length,

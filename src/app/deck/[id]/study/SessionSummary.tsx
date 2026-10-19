@@ -68,6 +68,14 @@ export function SessionSummary({
         >
           Back
         </button>
+        {summary.accuracy < 100 && summary.graded > 0 ? (
+          <button
+            className="btn-secondary"
+            onClick={() => (window.location.href = deckId ? `/deck/${deckId}/study?mode=weak` : "/review?mode=weak")}
+          >
+            Practice weak spots
+          </button>
+        ) : null}
         <button className="btn-primary" onClick={() => window.location.reload()}>
           Study again
         </button>

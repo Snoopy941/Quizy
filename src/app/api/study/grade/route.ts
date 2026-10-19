@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId, unauthorized } from "@/lib/session";
-import { sm2, type Grade } from "@/lib/sm2";
+import { fromStored, review, type Grade } from "@/lib/fsrs";
 
 const GRADES = new Set<Grade>(["again", "hard", "good", "easy"]);
 
@@ -12,7 +12,7 @@ const GRADES = new Set<Grade>(["again", "hard", "good", "easy"]);
  * Persists immediately so a closed browser loses nothing:
  * - upserts an active session (single-user-per-active-session per deck scope)
  * - appends a SessionCard row
- * - applies SM-2 to the card
+ * - applies FSRS to the card (legacy SM-2 cards are converted on the fly)
  * - stamps deck.lastStudiedAt
  */
 export async function POST(req: NextRequest) {
@@ -36,15 +36,7 @@ export async function POST(req: NextRequest) {
   });
   if (!card) return NextResponse.json({ error: "Card not found" }, { status: 404 });
 
-  const result = sm2(
-    {
-      easeFactor: card.easeFactor,
-      intervalDays: card.intervalDays,
-      reps: card.reps,
-      lapses: card.lapses,
-    },
-    grade
-  );
+  const result = review(fromStored(card), grade);
 
   // Find or create the active session
   let sessionId: string | null = typeof body?.sessionId === "string" ? body.sessionId : null;
@@ -103,9 +95,12 @@ export async function POST(req: NextRequest) {
     prisma.card.update({
       where: { id: card.id },
       data: {
-        easeFactor: result.easeFactor,
+        stability: result.stability,
+        fsrsDifficulty: result.difficulty,
+        fsrsState: result.state,
+        lastReviewAt: result.lastReview,
         intervalDays: result.intervalDays,
-        dueDate: result.dueDate,
+        dueDate: result.due,
         reps: result.reps,
         lapses: result.lapses,
         timesSeen: { increment: 1 },
@@ -124,7 +119,7 @@ export async function POST(req: NextRequest) {
     correct: result.correct,
     card: {
       id: updatedCard.id,
-      easeFactor: updatedCard.easeFactor,
+      stability: updatedCard.stability,
       intervalDays: updatedCard.intervalDays,
       dueDate: updatedCard.dueDate,
       reps: updatedCard.reps,

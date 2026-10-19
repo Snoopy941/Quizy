@@ -21,5 +21,6 @@ export default async function StudyPage({
   const timedRaw = typeof sp.timed === "string" ? parseInt(sp.timed, 10) : NaN;
   const timed = [5, 10, 15, 30, 60].includes(timedRaw) ? timedRaw : null;
 
-  return <StudySessionClient deckId={id} timedMinutes={timed} />;
+  const mode = sp.mode === "weak" ? "weak" : null;
+  return <StudySessionClient deckId={id} timedMinutes={timed} mode={mode} />;
 }
