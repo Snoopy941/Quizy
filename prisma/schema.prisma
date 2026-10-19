@@ -13,6 +13,8 @@ model User {
   passwordHash String
   name         String         @default("")
   avatar       String?
+  tokenVersion Int            @default(0) // bump to sign out every session
+  recoveryHash String? // bcrypt hash of the account recovery code
   createdAt    DateTime       @default(now())
   settings     UserSettings?
   decks        Deck[]
@@ -25,7 +27,12 @@ model Deck {
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
   description   String         @default("")
-  pdfUrl        String?
+  pdfUrl        String? // source file served by /api/files (PDF, DOCX, PPTX, TXT, image)
+  sourceType    String         @default("pdf") // pdf | docx | pptx | text | image | anki
+  aiSource      String? // which AI wrote the cards: builtin | api | demo
+  cardLanguage  String         @default("auto") // language the cards are written in (auto = same as source)
+  ocrLanguage   String         @default("eng") // Tesseract language code(s) for scanned pages/images
+  figures       String? // JSON { "<page>": "/api/images/<file>" } — main figure on each source page
   instructions  String         @default("")
   density       String         @default("medium") // low | medium | high
   pinned        Boolean        @default(false)
@@ -53,6 +60,10 @@ model DeckChunk {
   text      String
   status    String @default("pending") // pending | done | failed
   cardCount Int    @default(4)
+  pageStart Int? // first source page (or slide) this section covers
+  pageEnd   Int?
+  pageMap   String? // JSON [[charOffset, page], ...] for locating card sources
+  summary   String? // AI summary of this section (cheat sheet)
   cards     Card[]
 
   @@index([deckId])
@@ -71,7 +82,15 @@ model Card {
   difficulty   String        @default("medium") // easy | medium | hard
   category     String        @default("General")
   position     Int           @default(0)
-  // SM-2 state
+  sourcePage   Int? // page (or slide) the card was written from
+  sourceQuote  String? // short verbatim snippet from the source backing the answer
+  imageUrl     String? // figure shown with the card (from the source page, or added by the user)
+  // FSRS scheduling state (null fsrsState = card still carries legacy SM-2 state)
+  stability    Float?
+  fsrsDifficulty Float?
+  fsrsState    Int? // 0 new | 1 learning | 2 review | 3 relearning
+  lastReviewAt DateTime?
+  // legacy SM-2 state (kept for history + intervalDays/reps used by stats)
   easeFactor   Float         @default(2.5)
   intervalDays Float         @default(0)
   dueDate      DateTime      @default(now())
@@ -128,4 +147,10 @@ model UserSettings {
   defaultTimerMinutes Int     @default(10)
   cardDensity         String  @default("medium") // low | medium | high
   soundEnabled        Boolean @default(true)
+  // AI provider: auto | builtin | api
+  aiProvider          String  @default("auto")
+  aiBaseUrl           String  @default("")
+  aiApiKey            String  @default("")
+  aiModel             String  @default("")
+  readAloud           Boolean @default(false)
 }

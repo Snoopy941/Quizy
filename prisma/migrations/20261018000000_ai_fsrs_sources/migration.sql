@@ -1,0 +1,22 @@
+-- AlterTable
+ALTER TABLE "Deck" ADD COLUMN "sourceType" TEXT NOT NULL DEFAULT 'pdf';
+ALTER TABLE "Deck" ADD COLUMN "aiSource" TEXT;
+
+-- AlterTable
+ALTER TABLE "DeckChunk" ADD COLUMN "pageStart" INTEGER;
+ALTER TABLE "DeckChunk" ADD COLUMN "pageEnd" INTEGER;
+ALTER TABLE "DeckChunk" ADD COLUMN "pageMap" TEXT;
+
+-- AlterTable
+ALTER TABLE "Card" ADD COLUMN "sourcePage" INTEGER;
+ALTER TABLE "Card" ADD COLUMN "sourceQuote" TEXT;
+ALTER TABLE "Card" ADD COLUMN "stability" REAL;
+ALTER TABLE "Card" ADD COLUMN "fsrsDifficulty" REAL;
+ALTER TABLE "Card" ADD COLUMN "fsrsState" INTEGER;
+ALTER TABLE "Card" ADD COLUMN "lastReviewAt" DATETIME;
+
+-- AlterTable
+ALTER TABLE "UserSettings" ADD COLUMN "aiProvider" TEXT NOT NULL DEFAULT 'auto';
+ALTER TABLE "UserSettings" ADD COLUMN "aiBaseUrl" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "UserSettings" ADD COLUMN "aiApiKey" TEXT NOT NULL DEFAULT '';
+ALTER TABLE "UserSettings" ADD COLUMN "aiModel" TEXT NOT NULL DEFAULT '';
