@@ -1,12 +1,12 @@
 # ---- deps ----
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY prisma ./prisma
 RUN npm ci || npm install
 
 # ---- build ----
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -19,7 +19,7 @@ ENV DATABASE_URL="file:./data/quizy.db"
 RUN npx prisma generate && npx next build
 
 # ---- runtime ----
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -36,6 +36,9 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+# OCR engine (loaded at runtime, so standalone tracing may miss parts of it)
+COPY --from=builder /app/node_modules/tesseract.js ./node_modules/tesseract.js
+COPY --from=builder /app/node_modules/tesseract.js-core ./node_modules/tesseract.js-core
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh && chown -R quizy:quizy /app
 

@@ -13,4 +13,16 @@ contextBridge.exposeInMainWorld("quizyDesktop", {
     // cb: (maximized: boolean) => void
     ipcRenderer.on("quizy:maximizeChanged", (_e, maximized) => cb(maximized));
   },
+  // Automatic updates
+  onUpdate: (cb) => {
+    // cb: ({ status: "downloading" | "ready", version?, percent? }) => void
+    ipcRenderer.on("quizy:update", (_e, payload) => cb(payload));
+  },
+  checkForUpdates: () => ipcRenderer.invoke("quizy:checkForUpdates"),
+  installUpdate: () => ipcRenderer.invoke("quizy:installUpdate"),
+  appVersion: () => ipcRenderer.invoke("quizy:appVersion"),
+  // Study on your phone (same Wi-Fi)
+  phoneStatus: () => ipcRenderer.invoke("quizy:phoneStatus"),
+  setPhoneAccess: (on) => ipcRenderer.invoke("quizy:setPhoneAccess", Boolean(on)),
+  resetPhonePairing: () => ipcRenderer.invoke("quizy:resetPhonePairing"),
 });

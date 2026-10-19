@@ -3,11 +3,16 @@
 import { AnimatePresence, motion } from "framer-motion";
 
 const SHORTCUTS: [string, string][] = [
-  ["Space", "Flip the current card"],
+  ["Space", "Flip / show the answer"],
+  ["1–4", "Pick an answer option (before flipping; 1 = True, 2 = False)"],
+  ["Enter", "Check a typed answer"],
   ["1", "Grade: Again"],
   ["2", "Grade: Hard"],
   ["3", "Grade: Good"],
   ["4", "Grade: Easy"],
+  ["E", "Explain this card (after flipping)"],
+  ["R", "Read the card aloud"],
+  ["V", "Answer by voice (typed-answer cards)"],
   ["S", "Skip card (no grade)"],
   ["F", "Toggle focus mode"],
   ["?", "Show / hide this help"],

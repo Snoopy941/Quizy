@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/quit": ["./.env"],
   },
-  serverExternalPackages: ["unpdf", "bcryptjs", "@prisma/client"],
+  serverExternalPackages: ["unpdf", "bcryptjs", "@prisma/client", "tesseract.js", "tesseract.js-core"],
   experimental: {
     serverActions: { bodySizeLimit: "55mb" },
   },

@@ -8,6 +8,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { ShortcutsOverlay } from "./ShortcutsOverlay";
 import { DesktopBar } from "./DesktopBar";
 import { WindowControls } from "./WindowControls";
+import { UpdateBanner } from "./UpdateBanner";
 
 const NAV = [
   { href: "/", label: "Home", icon: "home" as const },
@@ -85,6 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isChromeless =
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
+    pathname.startsWith("/forgot") ||
     pathname.startsWith("/share/") ||
     pathname.startsWith("/deck/") && pathname.endsWith("/study");
 
@@ -148,6 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       {/* Frameless-window drag strip + window controls (desktop shell only) */}
       <DesktopBar />
+      <UpdateBanner />
 
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-bg px-4 pt-14 pb-6 md:flex">
         <Link href="/" className="mb-8 px-2">

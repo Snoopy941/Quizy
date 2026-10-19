@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/client";
 import { setSoundEnabled, soundEnabled } from "@/lib/sound";
 import { fmtDate } from "@/lib/client";
+import { AiSettings } from "./AiSettings";
+import { DownloadsSettings } from "./DownloadsSettings";
+import { SecuritySettings } from "./SecuritySettings";
+import { AboutSettings } from "./AboutSettings";
+import { PhoneSettings } from "./PhoneSettings";
 
 interface Me {
   user: { id: string; email: string; name: string; createdAt: string };
@@ -12,6 +17,7 @@ interface Me {
     defaultTimerMinutes: number;
     cardDensity: string;
     soundEnabled: boolean;
+    readAloud?: boolean;
   };
 }
 
@@ -79,6 +85,9 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      <AiSettings />
+      <DownloadsSettings />
+
       {/* Appearance */}
       <section className="card p-6">
         <h2 className="font-semibold">Appearance</h2>
@@ -136,8 +145,29 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-[11px] text-faint">Low ≈ 3, Medium ≈ 4, High ≈ 5 cards per PDF section.</p>
+          <p className="mt-1.5 text-[11px] text-faint">Low ≈ 3, Medium ≈ 4, High ≈ 5 cards per section of your document.</p>
         </div>
+      </section>
+
+      {/* Read aloud */}
+      <section className="card flex items-center justify-between p-6">
+        <div>
+          <h2 className="font-semibold">Read cards aloud</h2>
+          <p className="mt-1 text-xs text-dim">Speaks each question, then the answer when you flip — using your computer&apos;s voices. Press R anytime.</p>
+        </div>
+        <button
+          onClick={() => void patch({ readAloud: !me.settings.readAloud })}
+          className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors ${
+            me.settings.readAloud ? "border-accent bg-accent" : "border-line bg-surface2"
+          }`}
+          aria-label="Toggle read aloud"
+        >
+          <span
+            className={`absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full transition-all ${
+              me.settings.readAloud ? "left-6 bg-bg" : "left-0.5 bg-faint"
+            }`}
+          />
+        </button>
       </section>
 
       {/* Sound */}
@@ -165,6 +195,10 @@ export default function SettingsPage() {
           />
         </button>
       </section>
+
+      <PhoneSettings />
+      <SecuritySettings />
+      <AboutSettings />
 
       <p className="pb-4 text-center text-xs text-dim">Quizy · quizy.study</p>
     </div>

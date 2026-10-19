@@ -10,6 +10,10 @@ PORT=3927
 
 command -v node >/dev/null || { echo "node not on PATH"; exit 1; }
 
+echo "==> Installing dependencies"
+(cd "$ROOT" && npm install --no-audit --no-fund 2>&1 | tail -1)
+(cd "$ROOT" && npx prisma generate >/dev/null)
+
 echo "==> Building Next.js standalone"
 (cd "$ROOT" && npx next build)
 
@@ -53,6 +57,10 @@ mv "$DIST/electron.exe" "$DIST/Quizy.exe"# 2. Next.js standalone server + static
  rm -f "$DIST/app/.env"                      # launcher sets env explicitly
  mkdir -p "$DIST/app/.next"
  cp -r "$ROOT/.next/static" "$DIST/app/.next/static"
+ node "$ROOT/scripts/copy-runtime-deps.js" "$DIST/app" tesseract.js tesseract.js-core
+
+# 2b. Built-in offline AI + OCR model (set QUIZY_BUNDLE_AI=0 to skip the AI, ~2 GB)
+FETCH_AI="${QUIZY_BUNDLE_AI:-1}" bash "$ROOT/scripts/fetch-ai.sh" "$DIST/ai" "$DIST/app/ocr"
 
 # 3. Server runtime (Node) used to run the standalone server
 cp "$(command -v node | sed 's|/node$|/node.exe|; s|/node$|.exe|; s|$|.exe|')" "$DIST/bin/node.exe" 2>/dev/null \
@@ -72,8 +80,10 @@ const path = require("path");
 const dir = path.dirname(process.execPath);
 let token = "";
 try { token = fs.readFileSync(path.join(dir, "data", ".quit-token"), "utf8").trim(); } catch (e) {}
+let port = 3927;
+try { port = parseInt(fs.readFileSync(path.join(dir, "data", ".port"), "utf8").trim(), 10) || 3927; } catch (e) {}
 const req = http.request(
-  { host: "127.0.0.1", port: 3927, path: "/api/quit", method: "POST", timeout: 3000, headers: { "x-quizy-quit": token } },
+  { host: "127.0.0.1", port, path: "/api/quit", method: "POST", timeout: 3000, headers: { "x-quizy-quit": token } },
   (res) => { res.resume(); res.on("end", () => process.exit(0)); }
 );
 req.on("error", () => process.exit(0));

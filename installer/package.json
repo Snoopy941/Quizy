@@ -1,7 +1,7 @@
 {
   "name": "quizy",
-  "version": "1.0.0",
-  "description": "AI-powered study companion — turn any PDF into smart flashcards",
+  "version": "1.2.0",
+  "description": "AI-powered study companion \u2014 turn any PDF, slides or notes into smart flashcards",
   "main": "index.js",
   "author": "Quizy <hello@quizy.study>",
   "homepage": "https://quizy.study",
@@ -13,7 +13,7 @@
   "build": {
     "appId": "study.quizy.desktop",
     "productName": "Quizy",
-    "copyright": "Copyright © 2026 Quizy (quizy.study)",
+    "copyright": "Copyright \u00a9 2026 Quizy (quizy.study)",
     "directories": {
       "output": "installer-out"
     },
@@ -23,15 +23,41 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "staging/app", "to": "app" },
-      { "from": "staging/bin", "to": "bin" },
-      { "from": "staging/seed", "to": "seed" },
-      { "from": "staging/licenses", "to": "licenses" }
+      {
+        "from": "staging/app",
+        "to": "app"
+      },
+      {
+        "from": "staging/bin",
+        "to": "bin"
+      },
+      {
+        "from": "staging/seed",
+        "to": "seed"
+      },
+      {
+        "from": "staging/ai",
+        "to": "ai"
+      },
+      {
+        "from": "staging/licenses",
+        "to": "licenses"
+      }
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "staging/icon.ico",
       "artifactName": "Quizy-Setup-${version}.${ext}",
@@ -44,16 +70,26 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "allowElevation": true,
       "license": "LICENSE.txt",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Quizy",
-      "uninstallDisplayName": "Quizy — AI Flashcards from Any PDF",
+      "uninstallDisplayName": "Quizy \u2014 AI Flashcards from Any PDF",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
       "artifactName": "Quizy-Setup-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Snoopy941",
+        "repo": "Quizy"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
   }
 }

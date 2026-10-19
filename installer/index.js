@@ -7,6 +7,7 @@ const { spawn, execFile } = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
 const http = require("http");
+const net = require("net");
 const os = require("os");
 const path = require("path");
 
@@ -22,8 +23,67 @@ const SERVER = path.join(APP, "server.js");
 const DATA = INSTALLED
   ? path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "Quizy")
   : path.join(ROOT, "data");
-const PORT = 3927;
-const BASE = `http://127.0.0.1:${PORT}`;
+// Preferred port; if something else is using it we pick the next free one and
+// record it in data\.port so the Quit helper can find the running server.
+const PREFERRED_PORT = 3927;
+let PORT = PREFERRED_PORT;
+let BASE = `http://127.0.0.1:${PORT}`;
+const portFile = path.join(DATA, ".port");
+
+function findFreePort(from, tries, cb) {
+  const srv = net.createServer();
+  srv.once("error", () => (tries > 0 ? findFreePort(from + 1, tries - 1, cb) : cb(from)));
+  srv.once("listening", () => srv.close(() => cb(from)));
+  srv.listen(from, "127.0.0.1");
+}
+
+function runningPort() {
+  try {
+    const p = parseInt(fs.readFileSync(portFile, "utf8").trim(), 10);
+    if (p > 0) return p;
+  } catch (_) {}
+  return PREFERRED_PORT;
+}
+
+// Built-in offline AI: llama.cpp server + bundled model in <root>\ai, and the
+// OCR language model in <root>\app\ocr. Both optional — the app works without.
+const AI_DIR = path.join(ROOT, "ai");
+const LLAMA_BIN = path.join(AI_DIR, process.platform === "win32" ? "llama-server.exe" : "llama-server");
+function findModel() {
+  try {
+    const ggufs = fs.readdirSync(AI_DIR).filter((f) => f.toLowerCase().endsWith(".gguf"));
+    return ggufs.length ? path.join(AI_DIR, ggufs.sort()[0]) : null;
+  } catch (_) {
+    return null;
+  }
+}
+const OCR_DIR = path.join(APP, "ocr");
+
+// Big downloads (AI models, voice, OCR languages) live outside the install
+// folder so app updates never delete them — and outside the roaming profile.
+const MODELS_DIR = INSTALLED
+  ? path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"), "Quizy", "models")
+  : path.join(DATA, "models");
+try {
+  fs.mkdirSync(MODELS_DIR, { recursive: true });
+} catch (_) {}
+
+// First run of the full installer: move the bundled model into the models
+// folder (a rename on the same drive — instant). If that fails, use it in place.
+let MODEL = findModel();
+if (MODEL) {
+  const target = path.join(MODELS_DIR, path.basename(MODEL));
+  try {
+    if (fs.existsSync(target)) {
+      fs.rmSync(MODEL, { force: true });
+    } else {
+      fs.renameSync(MODEL, target);
+    }
+    MODEL = null;
+  } catch (_) {
+    /* different drive or read-only: keep using the bundled copy */
+  }
+}
 
 function fatal(msg) {
   try {
@@ -172,8 +232,18 @@ function waitForServer(cb) {
 }
 
 function startApp() {
+  // --quit doesn't need a port of its own
+  if (process.argv.includes("--quit")) return startAppWithPort();
+  findFreePort(PREFERRED_PORT, 50, (p) => {
+    PORT = p;
+    BASE = `http://127.0.0.1:${PORT}`;
+    startAppWithPort();
+  });
+}
+
+function startAppWithPort() {
   // eslint-disable-next-line global-require
-  const { app, BrowserWindow, shell, ipcMain } = require("electron");
+  const { app, BrowserWindow, shell, ipcMain, session } = require("electron");
 
   // --quit helper: tell the running instance to stop, then exit. Must run
   // before requestSingleInstanceLock so it works as a second instance.
@@ -185,7 +255,7 @@ function startApp() {
     const req = http.request(
       {
         host: "127.0.0.1",
-        port: PORT,
+        port: runningPort(),
         path: "/api/quit",
         method: "POST",
         timeout: 3000,
@@ -214,6 +284,7 @@ function startApp() {
 
   try {
     fs.writeFileSync(quitTokenFile, quitToken, { mode: 0o600 });
+    fs.writeFileSync(portFile, String(PORT));
   } catch (_) {}
 
   server = spawn(NODE, [SERVER], {
@@ -230,6 +301,12 @@ function startApp() {
       UPLOAD_DIR: uploadsDir,
       QUIZY_PORTABLE: "1",
       QUIZY_QUIT_TOKEN: quitToken,
+      QUIZY_MODELS_DIR: MODELS_DIR,
+      QUIZY_DATA_DIR: DATA,
+      ...(fs.existsSync(LLAMA_BIN) ? { QUIZY_LLAMA_BIN: LLAMA_BIN } : {}),
+      ...(MODEL ? { QUIZY_MODEL_PATH: MODEL } : {}),
+      QUIZY_LLAMA_PORT: String(PORT + 1),
+      ...(fs.existsSync(OCR_DIR) ? { QUIZY_OCR_DIR: OCR_DIR } : {}),
       NEXT_TELEMETRY_DISABLED: "1",
     },
   });
@@ -273,6 +350,7 @@ function startApp() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      plugins: true, // built-in PDF viewer ("Open PDF at page N")
       preload: path.join(__dirname, "preload.js"),
     },
   });
@@ -318,7 +396,18 @@ function startApp() {
     }, 2500);
   });
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith(BASE)) return { action: "allow" };
+    if (url.startsWith(BASE)) {
+      // In-app links opened in a new window (e.g. a source PDF at a page)
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: {
+          autoHideMenuBar: true,
+          backgroundColor: "#000000",
+          icon: fs.existsSync(iconIco) ? iconIco : undefined,
+          webPreferences: { contextIsolation: true, nodeIntegration: false, plugins: true },
+        },
+      };
+    }
     try {
       shell.openExternal(url);
     } catch (_) {}
@@ -332,7 +421,221 @@ function startApp() {
     }
   });
 
+  // Allow the microphone (voice answers) and speech for our own pages only.
+  try {
+    session.defaultSession.setPermissionRequestHandler((_wc, permission, cb, details) => {
+      const fromUs = String((details && details.requestingUrl) || "").startsWith(BASE);
+      cb(fromUs && ["media", "clipboard-sanitized-write", "fullscreen", "notifications"].includes(permission));
+    });
+  } catch (_) {}
+
+  setupAutoUpdates(win, ipcMain);
+  setupPhoneAccess(ipcMain);
   waitForServer(load);
+}
+
+/* ---------------- automatic updates (installed builds only) ---------------- */
+function setupAutoUpdates(win, ipcMain) {
+  let updater = null;
+  const send = (payload) => {
+    try {
+      if (win && !win.isDestroyed()) win.webContents.send("quizy:update", payload);
+    } catch (_) {}
+  };
+  ipcMain.handle("quizy:checkForUpdates", async () => {
+    if (!updater) return { status: "unsupported" };
+    try {
+      const r = await updater.checkForUpdates();
+      return { status: "checked", version: r && r.updateInfo ? r.updateInfo.version : null };
+    } catch (e) {
+      return { status: "error", error: String((e && e.message) || e) };
+    }
+  });
+  ipcMain.handle("quizy:installUpdate", () => {
+    if (!updater) return false;
+    quitting = true;
+    stopServer();
+    setTimeout(() => updater.quitAndInstall(true, true), 300);
+    return true;
+  });
+  ipcMain.handle("quizy:appVersion", () => {
+    try {
+      return require("electron").app.getVersion();
+    } catch (_) {
+      return null;
+    }
+  });
+  if (!INSTALLED || process.env.QUIZY_NO_UPDATES === "1") return;
+  try {
+    // eslint-disable-next-line global-require
+    updater = require("electron-updater").autoUpdater;
+  } catch (e) {
+    return;
+  }
+  updater.autoDownload = true;
+  updater.autoInstallOnAppQuit = true;
+  updater.logger = {
+    info: (m) => logLine("[updater] " + m),
+    warn: (m) => logLine("[updater] " + m),
+    error: (m) => logLine("[updater] " + m),
+    debug: () => {},
+  };
+  updater.on("update-available", (i) => send({ status: "downloading", version: i.version, percent: 0 }));
+  updater.on("download-progress", (p) => send({ status: "downloading", percent: Math.round(p.percent || 0) }));
+  updater.on("update-downloaded", (i) => send({ status: "ready", version: i.version }));
+  updater.on("error", (e) => logLine("[updater] error " + ((e && e.message) || e)));
+  const check = () => updater.checkForUpdates().catch(() => {});
+  setTimeout(check, 15000);
+  setInterval(check, 6 * 60 * 60 * 1000).unref();
+}
+
+/* ---------------- study on your phone (same Wi-Fi) ---------------- */
+// The app server only listens on 127.0.0.1. When the user turns phone access
+// on, a small proxy listens on the local network and forwards to it — but only
+// for devices that paired by scanning the QR code shown in Settings (they get a
+// long random cookie). Everyone still has to sign in to their Quizy account.
+const PHONE_COOKIE = "quizy_pair";
+const phoneSecretFile = path.join(DATA, ".phone-secret");
+const phoneEnabledFile = path.join(DATA, ".phone-enabled");
+let phoneServer = null;
+let phonePort = null;
+
+function phoneSecret(reset) {
+  let s = "";
+  if (!reset) {
+    try {
+      s = fs.readFileSync(phoneSecretFile, "utf8").trim();
+    } catch (_) {}
+  }
+  if (s.length < 32) {
+    s = crypto.randomBytes(24).toString("hex");
+    try {
+      fs.writeFileSync(phoneSecretFile, s, { mode: 0o600 });
+    } catch (_) {}
+  }
+  return s;
+}
+
+function lanAddresses() {
+  const out = [];
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const a of list || []) {
+      if (a.family !== "IPv4" || a.internal) continue;
+      if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(a.address)) out.push(a.address);
+    }
+  }
+  return out;
+}
+
+function phoneStatus() {
+  const addrs = lanAddresses();
+  const secret = phoneServer ? phoneSecret(false) : null;
+  return {
+    enabled: Boolean(phoneServer),
+    port: phonePort,
+    addresses: addrs,
+    url: phoneServer && addrs.length ? `http://${addrs[0]}:${phonePort}/__pair?code=${secret}` : null,
+  };
+}
+
+function readCookie(header, name) {
+  for (const part of String(header || "").split(";")) {
+    const [k, ...v] = part.trim().split("=");
+    if (k === name) return v.join("=");
+  }
+  return null;
+}
+
+function startPhoneServer() {
+  return new Promise((resolve) => {
+    if (phoneServer) return resolve(phoneStatus());
+    const secret = phoneSecret(false);
+    const srv = http.createServer((req, res) => {
+      const url = new URL(req.url || "/", "http://x");
+      if (url.pathname === "/__pair") {
+        if (url.searchParams.get("code") === secret) {
+          res.writeHead(302, {
+            "Set-Cookie": `${PHONE_COOKIE}=${secret}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 180}`,
+            Location: "/",
+          });
+        } else {
+          res.writeHead(403, { "Content-Type": "text/html; charset=utf-8" });
+          res.write("<p style='font-family:sans-serif'>This pairing link has expired. Scan the QR code in Quizy → Settings again.</p>");
+        }
+        return res.end();
+      }
+      if (readCookie(req.headers.cookie, PHONE_COOKIE) !== secret) {
+        res.writeHead(403, { "Content-Type": "text/html; charset=utf-8" });
+        return res.end(
+          "<meta name=viewport content='width=device-width'><p style='font-family:sans-serif;padding:24px'>To study on this phone, open Quizy on your computer → Settings → <b>Study on your phone</b> and scan the QR code.</p>"
+        );
+      }
+      if (url.pathname === "/api/quit") {
+        res.writeHead(404);
+        return res.end();
+      }
+      // Keep the phone's Host header so redirects point back at this proxy.
+      const headers = { ...req.headers, "x-forwarded-for": req.socket.remoteAddress || "" };
+      delete headers["x-quizy-quit"];
+      const up = http.request({ host: "127.0.0.1", port: PORT, method: req.method, path: req.url, headers }, (r) => {
+        res.writeHead(r.statusCode || 502, r.headers);
+        r.pipe(res);
+      });
+      up.on("error", () => {
+        if (!res.headersSent) res.writeHead(502);
+        res.end();
+      });
+      req.pipe(up);
+    });
+    findFreePort(PORT + 10, 40, (p) => {
+      srv.once("error", (e) => {
+        logLine("[phone] could not listen: " + e.message);
+        resolve(phoneStatus());
+      });
+      srv.listen(p, "0.0.0.0", () => {
+        phoneServer = srv;
+        phonePort = p;
+        try {
+          fs.writeFileSync(phoneEnabledFile, "1");
+        } catch (_) {}
+        logLine("[phone] listening on port " + p);
+        resolve(phoneStatus());
+      });
+    });
+  });
+}
+
+function stopPhoneServer() {
+  if (phoneServer) {
+    try {
+      phoneServer.close();
+    } catch (_) {}
+  }
+  phoneServer = null;
+  phonePort = null;
+  try {
+    fs.rmSync(phoneEnabledFile, { force: true });
+  } catch (_) {}
+  return phoneStatus();
+}
+
+function setupPhoneAccess(ipcMain) {
+  ipcMain.handle("quizy:phoneStatus", () => phoneStatus());
+  ipcMain.handle("quizy:setPhoneAccess", async (_e, on) => (on ? startPhoneServer() : stopPhoneServer()));
+  ipcMain.handle("quizy:resetPhonePairing", async () => {
+    // New secret: every paired phone has to scan again.
+    const wasOn = Boolean(phoneServer);
+    stopPhoneServer();
+    phoneSecret(true);
+    return wasOn ? startPhoneServer() : phoneStatus();
+  });
+  if (fs.existsSync(phoneEnabledFile)) startPhoneServer();
+}
+
+function logLine(msg) {
+  try {
+    fs.appendFileSync(path.join(DATA, "server.log"), new Date().toISOString() + " " + msg + "\n");
+  } catch (_) {}
 }
 
 try {

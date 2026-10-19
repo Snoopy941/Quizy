@@ -6,6 +6,14 @@ import { useEffect, useState } from "react";
  * Custom window controls for the Quizy desktop shell (frameless window).
  * Renders nothing in a normal browser — only when window.quizyDesktop exists.
  */
+export interface PhoneStatus {
+  enabled: boolean;
+  port: number | null;
+  addresses: string[];
+  /** Pairing link encoded in the QR code (null when off or no Wi-Fi address). */
+  url: string | null;
+}
+
 declare global {
   interface Window {
     quizyDesktop?: {
@@ -14,6 +22,13 @@ declare global {
       close: () => Promise<void>;
       isMaximized: () => Promise<boolean>;
       onMaximizeChange: (cb: (maximized: boolean) => void) => void;
+      onUpdate?: (cb: (u: { status: "downloading" | "ready"; version?: string; percent?: number }) => void) => void;
+      checkForUpdates?: () => Promise<{ status: string; version?: string | null; error?: string }>;
+      installUpdate?: () => Promise<boolean>;
+      appVersion?: () => Promise<string | null>;
+      phoneStatus?: () => Promise<PhoneStatus>;
+      setPhoneAccess?: (on: boolean) => Promise<PhoneStatus>;
+      resetPhonePairing?: () => Promise<PhoneStatus>;
     };
   }
 }
