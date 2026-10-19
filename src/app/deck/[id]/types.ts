@@ -5,6 +5,10 @@ export interface DeckData {
     description: string;
     instructions: string;
     pdfUrl: string | null;
+    sourceType: string;
+    aiSource: string | null;
+    cardLanguage: string;
+    ocrLanguage: string;
     pinned: boolean;
     shareId: string | null;
     genStatus: string;
@@ -34,6 +38,9 @@ export interface CardRow {
   lapses: number;
   timesSeen: number;
   timesFailed: number;
+  sourcePage: number | null;
+  sourceQuote: string | null;
+  imageUrl: string | null;
 }
 
 export interface ChunkRow {
@@ -42,6 +49,8 @@ export interface ChunkRow {
   heading: string;
   status: string;
   cardCount: number;
+  pageStart: number | null;
+  pageEnd: number | null;
 }
 
 export interface Stats {

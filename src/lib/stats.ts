@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
-import { isMastered } from "@/lib/sm2";
+import { fromStored, isMastered, previewIntervals, type Grade } from "@/lib/fsrs";
+import { parseFigures } from "@/lib/figures";
 
 /** End-of-day boundary for "due today" checks. */
 export function endOfToday(): Date {
@@ -51,6 +52,18 @@ export interface StudyQueueCard {
   reps: number;
   intervalDays: number;
   dueDate: string | Date;
+  sourcePage: number | null;
+  sourceType: string;
+  hasSource: boolean;
+  /** What each grade would schedule next, e.g. { again: "1m", good: "3d" } */
+  previews: Record<Grade, string>;
+  imageUrl: string | null;
+  /** Figure from the card's source page, if any. */
+  figureUrl: string | null;
+  cardLanguage: string;
+  timesSeen: number;
+  timesFailed: number;
+  lapses: number;
 }
 
 /** Cards due today (or all cards when reviewing ahead / empty deck). */
@@ -58,9 +71,15 @@ export async function getDueCards(userId: string, deckId?: string): Promise<Stud
   const cards = await prisma.card.findMany({
     where: { deck: { userId }, ...(deckId ? { deckId } : {}) },
     orderBy: { dueDate: "asc" },
-    include: { deck: { select: { name: true } } },
+    include: { deck: { select: { name: true, sourceType: true, figures: true, cardLanguage: true } } },
   });
   const eod = endOfToday();
+  const now = new Date();
+  const figCache = new Map<string, Record<string, string>>();
+  const figuresFor = (deckId: string, json: string | null) => {
+    if (!figCache.has(deckId)) figCache.set(deckId, parseFigures(json));
+    return figCache.get(deckId)!;
+  };
   const due = cards.filter((c) => c.dueDate <= eod);
   const rest = cards.filter((c) => c.dueDate > eod);
   const ordered = [...due, ...rest];
@@ -77,6 +96,16 @@ export async function getDueCards(userId: string, deckId?: string): Promise<Stud
     reps: c.reps,
     intervalDays: c.intervalDays,
     dueDate: c.dueDate,
+    sourcePage: c.sourcePage,
+    sourceType: c.deck.sourceType,
+    hasSource: Boolean(c.chunkId),
+    previews: previewIntervals(fromStored(c), now),
+    imageUrl: c.imageUrl,
+    figureUrl: c.sourcePage ? figuresFor(c.deckId, c.deck.figures)[String(c.sourcePage)] ?? null : null,
+    cardLanguage: c.deck.cardLanguage,
+    timesSeen: c.timesSeen,
+    timesFailed: c.timesFailed,
+    lapses: c.lapses,
   }));
 }
 

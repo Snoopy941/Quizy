@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { endOfToday } from "@/lib/stats";
-import { isMastered } from "@/lib/sm2";
+import { isMastered } from "@/lib/fsrs";
 import { LibraryClient } from "./LibraryClient";
 
 export const dynamic = "force-dynamic";

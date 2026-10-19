@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { api } from "@/lib/client";
+import { api, pageLabel } from "@/lib/client";
+import { SourcePanel } from "@/components/SourcePanel";
 import type { CardRow, ChunkRow, DeckData } from "./types";
 
 interface EditState {
@@ -17,12 +18,15 @@ export function CardList({
   chunks: _chunks,
   onSaved,
   deckId,
+  sourceType,
 }: {
   cards: CardRow[];
   chunks: ChunkRow[];
   onSaved: () => Promise<DeckData | null>;
   deckId: string;
+  sourceType: string;
 }) {
+  const [sourceCard, setSourceCard] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<EditState | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -89,6 +93,45 @@ export function CardList({
     setRegenInstructions("");
   };
 
+  const uploadImage = async (cardId: string, file: File | null) => {
+    if (!file) return;
+    setBusyId(cardId);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/cards/${cardId}/image`, { method: "POST", body: form });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      await onSaved();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Upload failed");
+    }
+    setBusyId(null);
+  };
+
+  const removeImage = async (cardId: string) => {
+    setBusyId(cardId);
+    try {
+      await api(`/api/cards/${cardId}/image`, { method: "DELETE" });
+      await onSaved();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Couldn't remove the image");
+    }
+    setBusyId(null);
+  };
+
+  const moreLikeThis = async (cardId: string) => {
+    setBusyId(cardId);
+    try {
+      const r = await api<{ added: number }>(`/api/cards/${cardId}/more`, { method: "POST" });
+      await onSaved();
+      alert(`Added ${r.added} new card${r.added === 1 ? "" : "s"} on this topic.`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Couldn't make more cards");
+    }
+    setBusyId(null);
+  };
+
   const regenerateSection = async (chunkId: string) => {
     setBusyId(chunkId);
     try {
@@ -126,7 +169,7 @@ export function CardList({
     return (
       <div className="card p-10 text-center">
         <p className="text-sm text-dim">No cards yet.</p>
-        <p className="mt-1 text-xs text-faint">Generate from the PDF or add cards manually.</p>
+        <p className="mt-1 text-xs text-faint">Generate from the source file or add cards manually.</p>
       </div>
     );
   }
@@ -141,6 +184,8 @@ export function CardList({
           {grouped ? "Flat list" : "Group by section"}
         </button>
       </div>
+
+      {sourceCard ? <SourcePanel cardId={sourceCard} onClose={() => setSourceCard(null)} /> : null}
 
       {groups.map((group) => {
         const chunkId = group.cards.find((c) => c.chunkId)?.chunkId ?? null;
@@ -187,6 +232,20 @@ export function CardList({
                             ))}
                           </select>
                           <input className="input max-w-44" value={editDraft?.category} onChange={(e) => setEditDraft(editDraft ? { ...editDraft, category: e.target.value } : editDraft)} placeholder="Category" />
+                          <label className="btn-ghost cursor-pointer px-3 py-1.5" title="Show an image with the question">
+                            🖼 {c.imageUrl ? "Change image" : "Add image"}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/bmp"
+                              className="hidden"
+                              onChange={(e) => void uploadImage(c.id, e.target.files?.[0] ?? null)}
+                            />
+                          </label>
+                          {c.imageUrl ? (
+                            <button className="btn-ghost px-3 py-1.5" onClick={() => void removeImage(c.id)}>
+                              Remove image
+                            </button>
+                          ) : null}
                           <div className="ml-auto flex gap-2">
                             <button className="btn-ghost px-3 py-1.5" onClick={() => setEditingId(null)}>Cancel</button>
                             <button className="btn-primary px-3 py-1.5" disabled={busyId === c.id} onClick={() => void saveEdit()}>Save</button>
@@ -195,6 +254,10 @@ export function CardList({
                       </div>
                     ) : (
                       <div className="flex items-start gap-3">
+                        {c.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={c.imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-line object-cover" />
+                        ) : null}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium leading-snug">{c.front}</p>
                           <p className="mt-1 text-sm text-dim">{c.back}</p>
@@ -202,6 +265,15 @@ export function CardList({
                             <span className="badge">{c.type}</span>
                             <span className="badge">{c.difficulty}</span>
                             <span className="badge">{c.category}</span>
+                            {c.chunkId ? (
+                              <button
+                                className="badge hover:text-ink"
+                                title="Show the passage this card came from"
+                                onClick={() => setSourceCard(c.id)}
+                              >
+                                📄 {pageLabel(sourceType, c.sourcePage) ?? "source"}
+                              </button>
+                            ) : null}
                             {c.intervalDays > 21 ? <span className="badge">mastered</span> : null}
                             <span>seen {c.timesSeen} · failed {c.timesFailed}</span>
                             <span>due {new Date(c.dueDate).toLocaleDateString()}</span>
@@ -212,6 +284,7 @@ export function CardList({
                           <IconBtn title="Move down" onClick={() => void move(c.id, 1)} disabled={busyId === c.id || flatIdx === cards.length - 1}>↓</IconBtn>
                           <IconBtn title="Edit card" onClick={() => startEdit(c)}>✎</IconBtn>
                           <IconBtn title="Regenerate with AI" onClick={() => { setRegenOpen(regenOpen === c.id ? null : c.id); setRegenInstructions(""); }}>⟳</IconBtn>
+                          <IconBtn title="More cards like this (AI)" onClick={() => void moreLikeThis(c.id)} disabled={busyId === c.id}>＋</IconBtn>
                           <IconBtn title="Delete card" onClick={() => void del(c.id)}>✕</IconBtn>
                         </div>
                       </div>

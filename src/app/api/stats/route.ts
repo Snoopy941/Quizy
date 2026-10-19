@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId, unauthorized } from "@/lib/session";
 import { getStreak, getDailyReviews, endOfToday } from "@/lib/stats";
-import { isMastered } from "@/lib/sm2";
+import { isMastered } from "@/lib/fsrs";
 
 /** GET /api/stats — cross-deck dashboard data. */
 export async function GET(req: NextRequest) {

@@ -86,7 +86,7 @@ export function LibraryClient({ decks: initial }: { decks: DeckSummary[] }) {
         <p className="max-w-xs text-sm text-dim">
           Upload a textbook chapter, lecture notes, or an article — Quizy turns it into flashcards.
         </p>
-        <Link href="/library/new" className="btn-primary mt-2">Upload your first PDF</Link>
+        <Link href="/library/new" className="btn-primary mt-2">Create your first deck</Link>
       </div>
     );
   }
@@ -124,7 +124,7 @@ export function LibraryClient({ decks: initial }: { decks: DeckSummary[] }) {
                   <div className="h-full bg-accent transition-all" style={{ width: `${d.genProgress}%` }} />
                 </div>
                 <p className="text-xs text-dim">
-                  {d.genStatus === "extracting" ? "Reading PDF…" : `Generating cards… ${d.genProgress}%`}
+                  {d.genStatus === "extracting" ? "Reading file…" : `Generating cards… ${d.genProgress}%`}
                 </p>
               </div>
             ) : failed ? (

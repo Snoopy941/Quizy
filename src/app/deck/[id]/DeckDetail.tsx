@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { api, timeAgo } from "@/lib/client";
+import { api, CARD_LANGUAGES, sourceKindLabel, timeAgo } from "@/lib/client";
 import { siteUrl } from "@/lib/site";
 import type { DeckData, CardRow, ChunkRow } from "./types";
 import { CardList } from "./CardList";
@@ -19,6 +19,7 @@ export function DeckDetail({ deckId }: { deckId: string }) {
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [instructionsDraft, setInstructionsDraft] = useState("");
+  const [languageDraft, setLanguageDraft] = useState("auto");
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [addedCard, setAddedCard] = useState(false);
 
@@ -58,6 +59,7 @@ export function DeckDetail({ deckId }: { deckId: string }) {
     if (deck) {
       setNameDraft(deck.name);
       setInstructionsDraft(deck.instructions);
+      setLanguageDraft(deck.cardLanguage || "auto");
     }
   }, [deck]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -92,7 +94,7 @@ export function DeckDetail({ deckId }: { deckId: string }) {
   };
 
   const startRegenerateDeck = async () => {
-    if (!confirm("Re-run AI generation on the PDF? Existing cards and scheduling state will be replaced.")) return;
+    if (!confirm(`Re-run AI generation on the ${sourceKindLabel(deck.sourceType)}? Existing cards and scheduling state will be replaced.`)) return;
     setMenuOpen(false);
     try {
       await api(`/api/decks/${deckId}/generate`, { method: "POST", body: JSON.stringify({ reprocess: true }) });
@@ -167,8 +169,10 @@ export function DeckDetail({ deckId }: { deckId: string }) {
             </p>
             {deck.pdfUrl ? (
               <a href={deck.pdfUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-faint underline underline-offset-2 hover:text-dim">
-                View source PDF ↗
+                View source {sourceKindLabel(deck.sourceType)} ↗
               </a>
+            ) : deck.sourceType === "anki" ? (
+              <span className="mt-1 inline-block text-xs text-faint">Imported from Anki</span>
             ) : null}
           </div>
           <div className="relative shrink-0">
@@ -181,7 +185,8 @@ export function DeckDetail({ deckId }: { deckId: string }) {
                 <MenuBtn onClick={startShare}>{deck.shareId ? "Copy share link" : "Share link"}</MenuBtn>
                 <MenuBtn onClick={() => { window.location.href = `/api/decks/${deckId}/export?format=csv`; setMenuOpen(false); }}>Export CSV</MenuBtn>
                 <MenuBtn onClick={() => { window.location.href = `/api/decks/${deckId}/export?format=json`; setMenuOpen(false); }}>Export JSON</MenuBtn>
-                <MenuBtn onClick={startRegenerateDeck}>Re-generate from PDF</MenuBtn>
+                <MenuBtn onClick={() => { window.location.href = `/api/decks/${deckId}/export?format=apkg`; setMenuOpen(false); }}>Export to Anki (.apkg)</MenuBtn>
+                {deck.pdfUrl ? <MenuBtn onClick={startRegenerateDeck}>Re-generate from source</MenuBtn> : null}
                 <MenuBtn danger onClick={() => { setMenuOpen(false); setConfirmDelete(true); }}>Delete deck</MenuBtn>
               </div>
             ) : null}
@@ -192,18 +197,34 @@ export function DeckDetail({ deckId }: { deckId: string }) {
           <div className="card mt-4 p-5">
             <div className="mb-2 flex items-center justify-between text-sm">
               <span className="font-medium">
-                {deck.genStatus === "extracting" ? "Reading PDF…" : "Generating cards…"}
+                {deck.genStatus === "extracting"
+                  ? deck.sourceType === "image" || deck.genProgress > 3
+                    ? `Reading ${sourceKindLabel(deck.sourceType)} (OCR)…`
+                    : `Reading ${sourceKindLabel(deck.sourceType)}…`
+                  : deck.aiSource === "builtin"
+                    ? "Generating cards with the built-in AI…"
+                    : "Generating cards…"}
               </span>
               <span className="tabular-nums text-dim">{deck.genProgress}%</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface2">
               <div className="h-full bg-accent transition-all duration-300" style={{ width: `${Math.max(3, deck.genProgress)}%` }} />
             </div>
+            {deck.aiSource === "builtin" && deck.genStatus === "generating" ? (
+              <p className="mt-2 text-[11px] text-faint">
+                Runs offline on this computer — about 20–60 s per section. Cards appear below as they&apos;re written; you can leave this page.
+              </p>
+            ) : null}
           </div>
         ) : deck.genStatus === "error" ? (
           <div className="card mt-4 p-5">
             <p className="text-sm font-medium">Generation hit a problem</p>
             <p className="mt-1 text-sm text-dim">{deck.genError}</p>
+            {deck.genError?.includes("Settings") ? (
+              <Link href="/settings" className="mt-1 inline-block text-xs underline underline-offset-2">
+                Open Settings → AI
+              </Link>
+            ) : null}
             <div className="mt-3 flex flex-wrap gap-2">
               <button className="btn-secondary px-3 py-1.5 text-xs" onClick={async () => {
                 try {
@@ -217,12 +238,32 @@ export function DeckDetail({ deckId }: { deckId: string }) {
           </div>
         ) : null}
 
+        {deck.aiSource === "demo" && !processing ? (
+          <p className="mt-3 text-xs text-faint">
+            These cards were made by the offline demo generator (MOCK_AI=1), not a real AI. Set up AI in Settings, then
+            use ••• → Re-generate for proper cards.
+          </p>
+        ) : null}
+
+        {deck.genStatus === "done" && deck.genError ? (
+          <p className="mt-3 text-xs text-dim">{deck.genError}</p>
+        ) : null}
+
         {!processing && cards.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href={`/deck/${deckId}/study`} className="btn-primary">▶ Study now</Link>
             <TimedStudyButton deckId={deckId} />
+            <Link href={`/deck/${deckId}/study?mode=weak`} className="btn-secondary" title="Cards you miss most">Weak spots</Link>
             <Link href={`/deck/${deckId}/stats`} className="btn-secondary">Stats</Link>
             <button className="btn-secondary" onClick={() => setAddedCard(true)}>+ Add card</button>
+          </div>
+        ) : null}
+
+        {!processing && (cards.length > 0 || chunks.length > 0) ? (
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Link href={`/deck/${deckId}/chat`} className="btn-ghost px-3 py-1.5 text-xs">💬 Ask the document</Link>
+            {chunks.length ? <Link href={`/deck/${deckId}/summary`} className="btn-ghost px-3 py-1.5 text-xs">📝 Cheat sheet</Link> : null}
+            {cards.length ? <Link href={`/deck/${deckId}/quality`} className="btn-ghost px-3 py-1.5 text-xs">🔍 Check card quality</Link> : null}
           </div>
         ) : null}
       </div>
@@ -244,7 +285,7 @@ export function DeckDetail({ deckId }: { deckId: string }) {
         <StatTile label="Learning" value={stats.learning} />
       </div>
 
-      <CardList cards={cards} chunks={chunks} onSaved={load} deckId={deckId} />
+      <CardList cards={cards} chunks={chunks} onSaved={load} deckId={deckId} sourceType={deck.sourceType} />
 
       {instructionsOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setInstructionsOpen(false)}>
@@ -259,10 +300,17 @@ export function DeckDetail({ deckId }: { deckId: string }) {
               onChange={(e) => setInstructionsDraft(e.target.value)}
               maxLength={500}
             />
+            <label className="label mt-4 !text-xs" htmlFor="card-lang">Card language</label>
+            <select id="card-lang" className="input" value={languageDraft} onChange={(e) => setLanguageDraft(e.target.value)}>
+              {Object.entries(CARD_LANGUAGES).map(([code, name]) => (
+                <option key={code} value={code}>{name}</option>
+              ))}
+            </select>
+            <p className="mt-1 text-[11px] text-faint">Applies to new and regenerated cards, explanations and chat.</p>
             <div className="mt-4 flex justify-end gap-2">
               <button className="btn-ghost" onClick={() => setInstructionsOpen(false)}>Cancel</button>
               <button className="btn-primary" onClick={async () => {
-                await saveMeta({ instructions: instructionsDraft });
+                await saveMeta({ instructions: instructionsDraft, cardLanguage: languageDraft });
                 setInstructionsOpen(false);
               }}>Save</button>
             </div>

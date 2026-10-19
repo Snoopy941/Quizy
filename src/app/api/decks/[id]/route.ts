@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId, unauthorized } from "@/lib/session";
 import { getDeckStats } from "@/lib/stats";
+import { CARD_LANGUAGES } from "@/lib/format";
 
 async function ownedDeck(req: NextRequest, deckId: string) {
   const userId = await getUserId(req);
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     prisma.deckChunk.findMany({
       where: { deckId: id },
       orderBy: { position: "asc" },
-      select: { id: true, position: true, heading: true, status: true, cardCount: true },
+      select: { id: true, position: true, heading: true, status: true, cardCount: true, pageStart: true, pageEnd: true },
     }),
     getDeckStats(id),
     prisma.studySession.findFirst({
@@ -49,6 +50,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       description: deck.description,
       instructions: deck.instructions,
       pdfUrl: deck.pdfUrl,
+      sourceType: deck.sourceType,
+      aiSource: deck.aiSource,
+      cardLanguage: deck.cardLanguage,
+      ocrLanguage: deck.ocrLanguage,
       pinned: deck.pinned,
       shareId: deck.shareId,
       genStatus: deck.genStatus,
@@ -73,6 +78,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
       lapses: c.lapses,
       timesSeen: c.timesSeen,
       timesFailed: c.timesFailed,
+      sourcePage: c.sourcePage,
+      sourceQuote: c.sourceQuote,
+      imageUrl: c.imageUrl,
     })),
     chunks,
     stats,
@@ -92,6 +100,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   if (typeof body.description === "string") data.description = body.description.slice(0, 500);
   if (typeof body.instructions === "string") data.instructions = body.instructions.slice(0, 500);
   if (typeof body.pinned === "boolean") data.pinned = body.pinned;
+  if (typeof body.cardLanguage === "string" && CARD_LANGUAGES[body.cardLanguage]) data.cardLanguage = body.cardLanguage;
+  if (typeof body.ocrLanguage === "string" && /^[a-z_]{3,8}(\+[a-z_]{3,8})*$/.test(body.ocrLanguage)) data.ocrLanguage = body.ocrLanguage;
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }

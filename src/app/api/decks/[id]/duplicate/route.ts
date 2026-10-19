@@ -22,6 +22,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       description: deck.description,
       instructions: deck.instructions,
       pdfUrl: deck.pdfUrl,
+      sourceType: deck.sourceType,
+      aiSource: deck.aiSource,
+      density: deck.density,
+      cardLanguage: deck.cardLanguage,
+      ocrLanguage: deck.ocrLanguage,
+      figures: deck.figures,
       genStatus: "done",
       genProgress: 100,
     },
@@ -37,6 +43,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         text: ch.text,
         status: ch.status,
         cardCount: ch.cardCount,
+        pageStart: ch.pageStart,
+        pageEnd: ch.pageEnd,
+        pageMap: ch.pageMap,
+        summary: ch.summary,
       },
     });
     chunkIdMap.set(ch.id, nc.id);
@@ -61,6 +71,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         lapses: c.lapses,
         timesSeen: c.timesSeen,
         timesFailed: c.timesFailed,
+        sourcePage: c.sourcePage,
+        sourceQuote: c.sourceQuote,
+        imageUrl: c.imageUrl,
+        stability: c.stability,
+        fsrsDifficulty: c.fsrsDifficulty,
+        fsrsState: c.fsrsState,
+        lastReviewAt: c.lastReviewAt,
       })),
     });
   }

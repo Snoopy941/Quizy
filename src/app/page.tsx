@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getStreak, getDailyReviews, endOfToday } from "@/lib/stats";
-import { isMastered } from "@/lib/sm2";
+import { isMastered } from "@/lib/fsrs";
 import { cookies } from "next/headers";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { StreakFlame } from "@/components/StreakFlame";
+import { resolveAi } from "@/lib/ai";
 
 async function requireUser() {
   const cookieStore = await cookies();
@@ -43,6 +44,7 @@ export default async function HomePage() {
   const mastered = decks.reduce((acc, d) => acc + d.cards.filter((c) => isMastered(c.intervalDays)).length, 0);
   const hasDecks = decks.length > 0;
   const anySession = await prisma.studySession.findFirst({ where: { userId: user.id }, select: { id: true } });
+  const ai = await resolveAi(user.id);
 
   const firstName = user.name?.split(" ")[0] || user.email.split("@")[0];
   const hour = new Date().getHours();
@@ -59,7 +61,7 @@ export default async function HomePage() {
               ? `You have ${dueToday} card${dueToday === 1 ? "" : "s"} ready for review.`
               : hasDecks
                 ? "All caught up — nice work."
-                : "Upload your first PDF to get started."}
+                : "Add your first study material to get started."}
           </p>
         </div>
         <StreakFlame streak={streak} />
@@ -85,6 +87,18 @@ export default async function HomePage() {
       </div>
 
       {/* Onboarding checklist */}
+      {!ai ? (
+        <div className="card flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-semibold">Set up AI to make cards</p>
+            <p className="mt-0.5 text-xs text-dim">Turn on the built-in offline AI or add an API key — it takes a few seconds.</p>
+          </div>
+          <Link href="/settings" className="btn-secondary shrink-0">
+            Open Settings →
+          </Link>
+        </div>
+      ) : null}
+
       {!anySession || !hasDecks ? (
         <div className="card p-6">
           <h2 className="mb-4 font-semibold">Get started with Quizy</h2>
@@ -93,7 +107,7 @@ export default async function HomePage() {
               <Check done /> Create your account
             </li>
             <li className="flex items-center gap-3">
-              <Check done={hasDecks} /> Upload a PDF and generate your first deck
+              <Check done={hasDecks} /> Add a PDF, slides or notes and generate your first deck
               {!hasDecks ? <a href="/library/new" className="ml-auto text-dim underline underline-offset-4">Start</a> : null}
             </li>
             <li className="flex items-center gap-3">
@@ -137,8 +151,8 @@ export default async function HomePage() {
             <svg className="h-10 w-10 text-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z" />
             </svg>
-            <p className="text-sm text-dim">No decks yet. Upload a PDF and Quizy will make the cards.</p>
-            <Link href="/library/new" className="btn-primary mt-2">Upload a PDF</Link>
+            <p className="text-sm text-dim">No decks yet. Add a PDF, Word or PowerPoint file, or paste notes, and Quizy will make the cards.</p>
+            <Link href="/library/new" className="btn-primary mt-2">Create a deck</Link>
           </div>
         )}
       </section>
