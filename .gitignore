@@ -13,13 +13,14 @@ data/
 *.db-journal
 
 # environment
-.env
-.env*.local
+.env*
 
 # desktop build output
 /dist/
 /installer-out/
 /installer/staging/
+/installer/cache/
+*.gguf
 /installer/node_modules/
 *.exe
 
@@ -30,3 +31,34 @@ data/
 *.log
 .DS_Store
 Thumbs.db
+
+# UI tests
+/test-results/
+/playwright-report/
+prisma/e2e-test.db*
+
+# installer build folders inside installer/
+/installer/installer-out/
+/installer/model-hold/
+
+# Quizy app files that an install into this folder left behind
+/*.dll
+/*.pak
+/*.bin
+/*.dat
+/LICENSE.electron.txt
+/LICENSES.chromium.html
+/vk_swiftshader_icd.json
+/locales/
+/resources/
+
+# release helper output
+/fix.log
+/publish.log
+/fix.bat
+/publish.bat
+/scripts/repair-git.sh
+/scripts/publish-git.sh
+/split.bat
+/split.log
+/scripts/split-commits.sh
