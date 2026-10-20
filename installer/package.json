@@ -1,6 +1,6 @@
 {
   "name": "quizy",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "AI-powered study companion \u2014 turn any PDF, slides or notes into smart flashcards",
   "main": "index.js",
   "author": "Quizy <hello@quizy.study>",
@@ -79,7 +79,8 @@
       "uninstallDisplayName": "Quizy \u2014 AI Flashcards from Any PDF",
       "runAfterFinish": true,
       "deleteAppDataOnUninstall": false,
-      "artifactName": "Quizy-Setup-${version}.${ext}"
+      "artifactName": "Quizy-Setup-${version}.${ext}",
+      "include": "installer.nsh"
     },
     "publish": [
       {

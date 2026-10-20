@@ -62,3 +62,7 @@ prisma/e2e-test.db*
 /split.bat
 /split.log
 /scripts/split-commits.sh
+
+# Google OAuth client for "Continue with Google" (see README)
+google-oauth.json
+client_secret_*.json

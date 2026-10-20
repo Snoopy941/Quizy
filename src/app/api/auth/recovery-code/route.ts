@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getUserId, unauthorized } from "@/lib/session";
 import { newRecoveryCode, normalizeRecoveryCode } from "@/lib/recovery";
 import { authLimiter, tooManyMessage } from "@/lib/rate-limit";
+import { hasPassword } from "@/lib/google";
 
 /** GET — whether a recovery code exists. POST { password } — make a new one (old one stops working). */
 export async function GET(req: NextRequest) {
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
   const wait = authLimiter.account.retryAfter(key);
   if (wait > 0) return NextResponse.json({ error: tooManyMessage(wait) }, { status: 429 });
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user || !(await bcrypt.compare(String(body?.password ?? ""), user.passwordHash))) {
+  if (!user || (hasPassword(user.passwordHash) && !(await bcrypt.compare(String(body?.password ?? ""), user.passwordHash)))) {
     authLimiter.account.fail(key);
     return NextResponse.json({ error: "Password is incorrect" }, { status: 401 });
   }

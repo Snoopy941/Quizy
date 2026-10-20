@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId, unauthorized } from "@/lib/session";
+import { hasPassword } from "@/lib/google";
 
 /** Current user + settings. Ensures a settings row exists. */
 export async function GET(req: NextRequest) {
@@ -9,12 +10,15 @@ export async function GET(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, name: true, createdAt: true, settings: true },
+    select: { id: true, email: true, name: true, createdAt: true, settings: true, passwordHash: true, googleSub: true },
   });
   if (!user) return unauthorized();
 
   const settings = user.settings ?? (await prisma.userSettings.create({ data: { userId } }));
-  return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt }, settings: publicSettings(settings) });
+  return NextResponse.json({
+    user: { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt, hasPassword: hasPassword(user.passwordHash), google: Boolean(user.googleSub) },
+    settings: publicSettings(settings),
+  });
 }
 
 /** Never send the stored API key back to the browser. */

@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from "@/lib/auth";
 import { authLimiter, clientKey, tooManyMessage } from "@/lib/rate-limit";
+import { hasPassword } from "@/lib/google";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest) {
     if (wait > 0) return NextResponse.json({ error: tooManyMessage(wait) }, { status: 429 });
 
     const user = await prisma.user.findUnique({ where: { email } });
+    if (user && !hasPassword(user.passwordHash)) {
+      return NextResponse.json({ error: "This account signs in with Google. Click Continue with Google." }, { status: 400 });
+    }
     const ok = user ? await bcrypt.compare(password, user.passwordHash) : false;
     if (!user || !ok) {
       authLimiter.account.fail(accountKey);

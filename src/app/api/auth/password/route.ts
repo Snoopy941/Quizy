@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getUserId, unauthorized } from "@/lib/session";
 import { createSessionToken, sessionCookieOptions, SESSION_COOKIE } from "@/lib/auth";
 import { authLimiter, tooManyMessage } from "@/lib/rate-limit";
+import { hasPassword } from "@/lib/google";
 
 /** POST /api/auth/password — { current, next }. Signs out other sessions. */
 export async function POST(req: NextRequest) {
@@ -19,7 +20,8 @@ export async function POST(req: NextRequest) {
   if (wait > 0) return NextResponse.json({ error: tooManyMessage(wait) }, { status: 429 });
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user || !(await bcrypt.compare(current, user.passwordHash))) {
+  // Accounts made with Google have no password yet: let them add one.
+  if (!user || (hasPassword(user.passwordHash) && !(await bcrypt.compare(current, user.passwordHash)))) {
     authLimiter.account.fail(key);
     return NextResponse.json({ error: "Current password is incorrect" }, { status: 401 });
   }

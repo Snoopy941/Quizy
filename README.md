@@ -105,6 +105,16 @@ export CSC_KEY_PASSWORD='…'
 bash scripts/build-installer.sh
 ```
 
+### Continue with Google
+
+Optional. Accounts still live on the user's computer; Google only confirms who they are.
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create a project, then go to **APIs & Services → OAuth consent screen** and set it up (External, app name "Quizy", your email, scopes `openid`, `email`, `profile`). Publish the app so anyone can sign in.
+2. Go to **Credentials → Create credentials → OAuth client ID**, choose **Desktop app**, and download the JSON.
+3. Save it as `google-oauth.json` in the project root. It's git-ignored, and the installer build copies it into the app.
+
+For development you can set `QUIZY_GOOGLE_CLIENT_ID` and `QUIZY_GOOGLE_CLIENT_SECRET` instead. Sign-in opens in the system browser and returns to `http://127.0.0.1:<port>/api/auth/google/callback`. Google allows any loopback port for Desktop app clients, so nothing needs registering.
+
 ### Study on your phone
 
 Settings → **Study on your phone** shares Quizy on your Wi-Fi while the desktop app is open: scan the QR code, sign in, study. Only devices that scanned the code can connect (a long random pairing cookie); "Disconnect all phones" revokes them. Windows asks once whether to allow Quizy on networks — choose *Private networks*.

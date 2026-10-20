@@ -13,16 +13,27 @@ export function SecuritySettings() {
   const [codePw, setCodePw] = useState("");
   const [newCode, setNewCode] = useState<string | null>(null);
   const [codeMsg, setCodeMsg] = useState<string | null>(null);
+  // Accounts made with "Continue with Google" start without a password.
+  const [account, setAccount] = useState<{ hasPassword: boolean; google: boolean } | null>(null);
+  const pwSet = account?.hasPassword !== false;
 
   useEffect(() => {
     api<{ hasCode: boolean }>("/api/auth/recovery-code")
       .then((r) => setHasCode(r.hasCode))
+      .catch(() => {});
+    api<{ user: { hasPassword?: boolean; google?: boolean } }>("/api/me")
+      .then((r) => setAccount({ hasPassword: r.user.hasPassword !== false, google: Boolean(r.user.google) }))
       .catch(() => {});
   }, []);
 
   return (
     <section className="card p-6">
       <h2 className="font-semibold">Password &amp; security</h2>
+      {account?.google ? (
+        <p className="mt-1 text-xs text-dim">
+          Linked to your Google account. You can sign in with Google{pwSet ? " or with your password" : ""}.
+        </p>
+      ) : null}
 
       <form
         className="mt-4 space-y-3"
@@ -32,7 +43,8 @@ export function SecuritySettings() {
           setMsg(null);
           try {
             await api("/api/auth/password", { method: "POST", body: JSON.stringify({ current, next }) });
-            setMsg("Password changed ✓ — other devices were signed out.");
+            setMsg(pwSet ? "Password changed ✓ — other devices were signed out." : "Password added ✓ — you can now also sign in with your email.");
+            setAccount((a) => (a ? { ...a, hasPassword: true } : a));
             setCurrent("");
             setNext("");
           } catch (err) {
@@ -42,13 +54,15 @@ export function SecuritySettings() {
         }}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <input className="input" type="password" placeholder="Current password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
+          {pwSet ? (
+            <input className="input" type="password" placeholder="Current password" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
+          ) : null}
           <input className="input" type="password" placeholder="New password (8+ characters)" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" required />
         </div>
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs text-dim">{msg}</p>
           <button className="btn-secondary shrink-0 px-4 py-2 text-sm" disabled={busy}>
-            Change password
+            {pwSet ? "Change password" : "Add a password"}
           </button>
         </div>
       </form>
@@ -83,7 +97,9 @@ export function SecuritySettings() {
               }
             }}
           >
-            <input className="input" type="password" placeholder="Confirm your password" value={codePw} onChange={(e) => setCodePw(e.target.value)} required />
+            {pwSet ? (
+              <input className="input" type="password" placeholder="Confirm your password" value={codePw} onChange={(e) => setCodePw(e.target.value)} required />
+            ) : null}
             <button className="btn-secondary shrink-0 px-4 text-sm">{hasCode ? "New code" : "Create code"}</button>
           </form>
         )}

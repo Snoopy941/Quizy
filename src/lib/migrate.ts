@@ -26,6 +26,10 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
     name: "20261019000000_v1_2_features",
     sql: "-- AlterTable\nALTER TABLE \"User\" ADD COLUMN \"tokenVersion\" INTEGER NOT NULL DEFAULT 0;\nALTER TABLE \"User\" ADD COLUMN \"recoveryHash\" TEXT;\n\n-- AlterTable\nALTER TABLE \"Deck\" ADD COLUMN \"cardLanguage\" TEXT NOT NULL DEFAULT 'auto';\nALTER TABLE \"Deck\" ADD COLUMN \"ocrLanguage\" TEXT NOT NULL DEFAULT 'eng';\nALTER TABLE \"Deck\" ADD COLUMN \"figures\" TEXT;\n\n-- AlterTable\nALTER TABLE \"DeckChunk\" ADD COLUMN \"summary\" TEXT;\n\n-- AlterTable\nALTER TABLE \"Card\" ADD COLUMN \"imageUrl\" TEXT;\n\n-- AlterTable\nALTER TABLE \"UserSettings\" ADD COLUMN \"readAloud\" BOOLEAN NOT NULL DEFAULT false;\n",
   },
+  {
+    name: "20261020000000_google_sign_in",
+    sql: "-- Sign in with Google: link a local account to a Google account id.\nALTER TABLE \"User\" ADD COLUMN \"googleSub\" TEXT;\n\nCREATE UNIQUE INDEX \"User_googleSub_key\" ON \"User\"(\"googleSub\");\n",
+  },
 ];
 
 /** Split a migration file into single statements (no semicolons inside literals in our files). */

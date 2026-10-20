@@ -31,6 +31,8 @@ cp -r "$ROOT/.next/static" "$OUT_APP/.next/static"
 [ -d "$ROOT/public" ] && cp -r "$ROOT/public" "$OUT_APP/public"
 cp "$ROOT/assets/quizy-icon.png" "$OUT_APP/quizy-icon.png"
 cp "$ROOT/assets/quizy.ico" "$OUT_APP/quizy.ico"
+# "Continue with Google": the OAuth client file from Google Cloud (kept out of git)
+if [ -f "$ROOT/google-oauth.json" ]; then cp "$ROOT/google-oauth.json" "$OUT_APP/google-oauth.json"; echo "==> Google sign-in: on"; else echo "==> Google sign-in: off (no google-oauth.json)"; fi
 rm -f "$OUT_APP/.env"   # launcher sets env explicitly
 # OCR engine is loaded at runtime; make sure all of it ships
 node "$ROOT/scripts/copy-runtime-deps.js" "$OUT_APP" tesseract.js tesseract.js-core

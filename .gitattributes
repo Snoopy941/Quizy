@@ -1,0 +1,13 @@
+# Keep files byte-for-byte as committed (no CRLF conversion on Windows).
+# Migrations are checksummed and test fixtures are binary documents.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.pdf binary
+*.docx binary
+*.pptx binary
+*.png binary
+*.ico binary
+*.jpg binary
+*.gguf binary
+*.traineddata binary

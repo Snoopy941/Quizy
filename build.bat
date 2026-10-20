@@ -11,7 +11,7 @@ if not defined BASH (
   pause
   exit /b 1
 )
-"%BASH%" -c "{ echo '== npm install'; npm install --no-audit --no-fund && echo '== tests' && npm test && echo '== installer' && bash scripts/build-installer.sh; } 2>&1 | tee build.log; echo \"BUILD_EXIT=${PIPESTATUS[0]}\" | tee -a build.log"
+"%BASH%" -c "{ echo '== npm install'; npm install --no-audit --no-fund && echo '== prisma generate' && npx prisma generate && echo '== tests' && npm test && echo '== installer' && bash scripts/build-installer.sh; } 2>&1 | tee build.log; echo \"BUILD_EXIT=${PIPESTATUS[0]}\" | tee -a build.log"
 echo.
 echo Done. You can close this window.
 pause

@@ -15,6 +15,7 @@ model User {
   avatar       String?
   tokenVersion Int            @default(0) // bump to sign out every session
   recoveryHash String? // bcrypt hash of the account recovery code
+  googleSub    String?        @unique // Google account id, when signed in with Google
   createdAt    DateTime       @default(now())
   settings     UserSettings?
   decks        Deck[]
