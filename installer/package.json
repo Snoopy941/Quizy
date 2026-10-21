@@ -56,7 +56,7 @@
     "nsis": {
       "oneClick": false,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": false,
+      "allowToChangeInstallationDirectory": true,
       "allowElevation": true,
       "license": "LICENSE.txt",
       "createDesktopShortcut": true,

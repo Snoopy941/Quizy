@@ -5,7 +5,7 @@
 **Continue with Google.** Sign in or create your account with Google instead of a password. Your decks still stay on your computer: Google only confirms who you are. Accounts with the same email are linked automatically, and you can add a password later in Settings.
 
 **Safer updating.** Quizy 1.0 and 1.1 let you choose where to install, and updating removed that whole folder. If Quizy had been installed into a folder that also held your own files, updating could delete them. From 1.2.1:
-- Quizy always installs into its own folder (`%LOCALAPPDATA%\Programs\Quizy`).
+- You can choose where to install (another drive, say). Quizy always gets its own folder there: choosing `D:\Apps` installs into `D:\Apps\Quizy`.
 - If an older version was installed somewhere else, the update leaves that folder alone instead of uninstalling there. You can delete the old Quizy files from it yourself.
 - Uninstalling only removes Quizy's own files.
 

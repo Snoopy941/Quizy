@@ -6,15 +6,25 @@
 ; a folder that also held their own files (a project folder, Documents, the
 ; Desktop...), updating would delete those files.
 ;
-; These rules make Quizy only ever install into, and remove, its own folder:
-;   %LOCALAPPDATA%\Programs\Quizy
+; The rules:
+;   - You can choose where to install, but Quizy always gets a folder of its
+;     own: picking D:\Apps installs into D:\Apps\Quizy.
+;   - Outside the default folder (%LOCALAPPDATA%\Programs\Quizy) uninstalling
+;     and updating only remove the files Quizy put there, never the folder's
+;     other contents.
+;   - An install made by Quizy 1.0/1.1 outside the default folder is never
+;     uninstalled automatically (its uninstaller would remove the whole folder).
+
+; ${if} and friends (also needed by the page function below, which is
+; compiled where this file is included).
+!include LogicLib.nsh
 
 !macro quizyOwnDir OUT
   StrCpy ${OUT} "$LOCALAPPDATA\Programs\${APP_FILENAME}"
 !macroend
 
-; Quizy runs helper programs from its folder: the app server (node.exe) and
-; the AI (llama-server.exe). If Quizy crashed or was closed oddly they can keep
+; Quizy runs helper programs from its folder: the app server (node.exe), and in
+; older versions the AI (llama-server.exe). If Quizy crashed or was closed oddly they can keep
 ; running and lock their files, and then the old version can't be removed
 ; ("Failed to uninstall old application files: 2"). Stop any program running
 ; from DIR except Quizy itself, which electron-builder already asks you to close.
@@ -30,16 +40,33 @@
   ${endif}
 !macroend
 
+; Give Quizy a folder of its own: "D:\Apps" becomes "D:\Apps\Quizy".
+!macro quizyFixDir
+  ; drop a trailing backslash ("D:\")
+  StrCpy $R5 $INSTDIR 1 -1
+  ${if} $R5 == "\"
+    StrCpy $INSTDIR $INSTDIR -1
+  ${endif}
+  StrLen $R4 "${APP_FILENAME}"
+  IntOp $R4 $R4 + 1
+  StrCpy $R5 $INSTDIR "" -$R4
+  ${if} $R5 != "\${APP_FILENAME}"
+    StrCpy $INSTDIR "$INSTDIR\${APP_FILENAME}"
+  ${endif}
+!macroend
+
 ; Runs when the installer starts, before any old version is uninstalled.
 !macro customInit
   !insertmacro quizyOwnDir $R9
   ReadRegStr $R8 HKCU "${INSTALL_REGISTRY_KEY}" InstallLocation
+  ReadRegStr $R3 HKCU "${INSTALL_REGISTRY_KEY}" QuizySafeUninstall
   ${if} $R8 != ""
   ${andIf} $R8 != $R9
-    ; The previous version lives somewhere other than Quizy's own folder.
-    ; Never run its uninstaller there: forget that install instead. Its files
-    ; stay where they are, and the user can delete them by hand.
-    DetailPrint "Previous Quizy install in $R8 is not in Quizy's own folder; leaving its files alone."
+  ${andIf} $R3 != "1"
+    ; Made by Quizy 1.0/1.1 somewhere other than Quizy's own folder. Never run
+    ; its uninstaller there: forget that install instead. Its files stay where
+    ; they are, and the user can delete them by hand.
+    DetailPrint "Previous Quizy install in $R8 was made by an old version; leaving its files alone."
     DeleteRegValue HKCU "${UNINSTALL_REGISTRY_KEY}" "UninstallString"
     DeleteRegValue HKCU "${UNINSTALL_REGISTRY_KEY}" "QuietUninstallString"
     !ifdef UNINSTALL_REGISTRY_KEY_2
@@ -47,11 +74,35 @@
       DeleteRegValue HKCU "${UNINSTALL_REGISTRY_KEY_2}" "QuietUninstallString"
     !endif
     DeleteRegValue HKCU "${INSTALL_REGISTRY_KEY}" "InstallLocation"
+    ${if} $INSTDIR == $R8
+      StrCpy $INSTDIR $R9
+    ${endif}
   ${endif}
-  ; Always install into Quizy's own folder (also ignores a /D= switch).
-  StrCpy $INSTDIR $R9
+  ${if} $INSTDIR == ""
+    StrCpy $INSTDIR $R9
+  ${endif}
+  !insertmacro quizyFixDir
   ; Free the old version's files before it is uninstalled.
-  !insertmacro quizyStopHelpers $R9
+  ${if} $R8 != ""
+    !insertmacro quizyStopHelpers $R8
+  ${endif}
+  !insertmacro quizyStopHelpers $INSTDIR
+!macroend
+
+; After the folder page: make sure the chosen folder is Quizy's own.
+!macro customPageAfterChangeDir
+  Page custom quizyAfterDirPage
+!macroend
+!ifndef BUILD_UNINSTALLER
+Function quizyAfterDirPage
+  !insertmacro quizyFixDir
+  Abort ; nothing to show, just skip this page
+FunctionEnd
+!endif
+
+; After installing: mark this install as one whose uninstaller is safe anywhere.
+!macro customInstall
+  WriteRegStr HKCU "${INSTALL_REGISTRY_KEY}" QuizySafeUninstall "1"
 !macroend
 
 ; Runs when the uninstaller starts (also during updates).
