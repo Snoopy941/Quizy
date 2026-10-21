@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, timeAgo } from "@/lib/client";
 import { siteUrl } from "@/lib/site";
+import { Icon } from "@/components/Icon";
 
 export interface DeckSummary {
   id: string;
@@ -92,12 +93,12 @@ export function LibraryClient({ decks: initial }: { decks: DeckSummary[] }) {
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {decks.map((d) => {
         const processing = d.genStatus === "extracting" || d.genStatus === "generating";
         const failed = d.genStatus === "error";
         return (
-          <div key={d.id} className="card group relative flex flex-col p-5 transition-colors hover:border-dim">
+          <div key={d.id} className="card card-hover group relative flex flex-col p-5">
             <div className="flex items-start justify-between gap-2">
               {processing ? (
                 <Link href={`/deck/${d.id}`} className="font-semibold leading-snug hover:underline">
@@ -159,7 +160,7 @@ export function LibraryClient({ decks: initial }: { decks: DeckSummary[] }) {
                   ) : null}
                 </div>
                 <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-surface2">
-                  <div className="h-full bg-accent transition-all" style={{ width: `${d.masteryPct}%` }} />
+                  <div className="bar-fill h-full bg-accent transition-all" style={{ width: `${d.masteryPct}%` }} />
                 </div>
                 <p className="mt-3 text-[11px] text-faint">Last studied {timeAgo(d.lastStudiedAt)}</p>
               </>
@@ -167,7 +168,7 @@ export function LibraryClient({ decks: initial }: { decks: DeckSummary[] }) {
 
             {menuId === d.id ? (
               <div className="absolute right-3 top-10 z-20 w-44 overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
-                <MenuButton onClick={() => { togglePin(d); setMenuId(null); }}>{d.pinned ? "★ Unpin" : "☆ Pin to top"}</MenuButton>
+                <MenuButton onClick={() => { togglePin(d); setMenuId(null); }}>{d.pinned ? <><Icon name="starFilled" className="mr-2 h-3.5 w-3.5" />Unpin</> : <><Icon name="star" className="mr-2 h-3.5 w-3.5" />Pin to top</>}</MenuButton>
                 <MenuButton onClick={() => duplicate(d)}>Duplicate</MenuButton>
                 <MenuButton onClick={() => { window.location.href = `/api/decks/${d.id}/export?format=csv`; setMenuId(null); }}>Export CSV</MenuButton>
                 <MenuButton onClick={() => { window.location.href = `/api/decks/${d.id}/export?format=json`; setMenuId(null); }}>Export JSON</MenuButton>
@@ -181,7 +182,7 @@ export function LibraryClient({ decks: initial }: { decks: DeckSummary[] }) {
 
       {confirmDelete ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setConfirmDelete(null)}>
-          <div className="card w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="card anim-pop w-full max-w-sm p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-bold">Delete this deck?</h3>
             <p className="mt-2 text-sm text-dim">
               “{decks.find((d) => d.id === confirmDelete)?.name}” and all its cards, schedules, and stats will be permanently removed.

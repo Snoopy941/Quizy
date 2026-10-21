@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { api, pageLabel } from "@/lib/client";
 import { SourcePanel } from "@/components/SourcePanel";
 import type { CardRow, ChunkRow, DeckData } from "./types";
+import { Icon } from "@/components/Icon";
 
 interface EditState {
   front: string;
@@ -175,7 +176,7 @@ export function CardList({
   }
 
   return (
-    <section className="space-y-4">
+    <section className="stagger space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="font-semibold">
           Cards <span className="text-sm font-normal text-faint">({cards.length})</span>
@@ -233,7 +234,7 @@ export function CardList({
                           </select>
                           <input className="input max-w-44" value={editDraft?.category} onChange={(e) => setEditDraft(editDraft ? { ...editDraft, category: e.target.value } : editDraft)} placeholder="Category" />
                           <label className="btn-ghost cursor-pointer px-3 py-1.5" title="Show an image with the question">
-                            🖼 {c.imageUrl ? "Change image" : "Add image"}
+                            <Icon name="image" /> {c.imageUrl ? "Change image" : "Add image"}
                             <input
                               type="file"
                               accept="image/png,image/jpeg,image/webp,image/bmp"
@@ -271,7 +272,7 @@ export function CardList({
                                 title="Show the passage this card came from"
                                 onClick={() => setSourceCard(c.id)}
                               >
-                                📄 {pageLabel(sourceType, c.sourcePage) ?? "source"}
+                                <Icon name="file" /> {pageLabel(sourceType, c.sourcePage) ?? "source"}
                               </button>
                             ) : null}
                             {c.intervalDays > 21 ? <span className="badge">mastered</span> : null}
@@ -280,12 +281,12 @@ export function CardList({
                           </div>
                         </div>
                         <div className="flex shrink-0 gap-1">
-                          <IconBtn title="Move up" onClick={() => void move(c.id, -1)} disabled={busyId === c.id || flatIdx === 0}>↑</IconBtn>
-                          <IconBtn title="Move down" onClick={() => void move(c.id, 1)} disabled={busyId === c.id || flatIdx === cards.length - 1}>↓</IconBtn>
-                          <IconBtn title="Edit card" onClick={() => startEdit(c)}>✎</IconBtn>
-                          <IconBtn title="Regenerate with AI" onClick={() => { setRegenOpen(regenOpen === c.id ? null : c.id); setRegenInstructions(""); }}>⟳</IconBtn>
-                          <IconBtn title="More cards like this (AI)" onClick={() => void moreLikeThis(c.id)} disabled={busyId === c.id}>＋</IconBtn>
-                          <IconBtn title="Delete card" onClick={() => void del(c.id)}>✕</IconBtn>
+                          <IconBtn title="Move up" onClick={() => void move(c.id, -1)} disabled={busyId === c.id || flatIdx === 0}><Icon name="arrowUp" /></IconBtn>
+                          <IconBtn title="Move down" onClick={() => void move(c.id, 1)} disabled={busyId === c.id || flatIdx === cards.length - 1}><Icon name="arrowDown" /></IconBtn>
+                          <IconBtn title="Edit card" onClick={() => startEdit(c)}><Icon name="pencil" /></IconBtn>
+                          <IconBtn title="Regenerate with AI" onClick={() => { setRegenOpen(regenOpen === c.id ? null : c.id); setRegenInstructions(""); }}><Icon name="repeat" /></IconBtn>
+                          <IconBtn title="More cards like this (AI)" onClick={() => void moreLikeThis(c.id)} disabled={busyId === c.id}><Icon name="plus" /></IconBtn>
+                          <IconBtn title="Delete card" onClick={() => void del(c.id)}><Icon name="trash" /></IconBtn>
                         </div>
                       </div>
                     )}
@@ -323,7 +324,7 @@ function IconBtn({ children, title, onClick, disabled }: { children: React.React
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className="flex h-7 w-7 items-center justify-center rounded-md border border-line text-xs text-dim transition-colors hover:bg-surface2 hover:text-ink disabled:opacity-40"
+      className="flex h-7 w-7 items-center justify-center rounded-lg border border-line text-[13px] text-dim transition-all duration-200 hover:-translate-y-0.5 hover:border-dim/60 hover:bg-surface2 hover:text-ink active:scale-90 disabled:opacity-40"
     >
       {children}
     </button>

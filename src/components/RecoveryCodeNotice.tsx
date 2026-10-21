@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/Icon";
 
 /** One-time display of an account recovery code with copy + save-as-file. */
 export function RecoveryCodeNotice({ code, onDone, doneLabel = "I've saved it" }: { code: string; onDone: () => void; doneLabel?: string }) {
@@ -33,7 +34,7 @@ export function RecoveryCodeNotice({ code, onDone, doneLabel = "I've saved it" }
             setCopied(true);
           }}
         >
-          {copied ? "Copied ✓" : "Copy"}
+          {copied ? <><Icon name="check" /> Copied</> : <><Icon name="copy" /> Copy</>}
         </button>
         <button type="button" className="btn-secondary flex-1" onClick={download}>
           Save as file

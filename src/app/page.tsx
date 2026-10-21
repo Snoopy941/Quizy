@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { StreakFlame } from "@/components/StreakFlame";
 import { resolveAi } from "@/lib/ai";
+import { Icon } from "@/components/Icon";
 
 async function requireUser() {
   const cookieStore = await cookies();
@@ -51,7 +52,7 @@ export default async function HomePage() {
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       {/* Greeting + streak */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -77,7 +78,7 @@ export default async function HomePage() {
           </div>
           <div className="flex flex-col gap-2 md:flex-row">
             <Link href="/review" className="btn-primary">
-              Start review →
+              Start review <Icon name="arrowRight" />
             </Link>
             <Link href="/library/new" className="btn-secondary">
               + New deck
@@ -94,7 +95,7 @@ export default async function HomePage() {
             <p className="mt-0.5 text-xs text-dim">Turn on the built-in offline AI or add an API key — it takes a few seconds.</p>
           </div>
           <Link href="/settings" className="btn-secondary shrink-0">
-            Open Settings →
+            Open Settings <Icon name="arrowRight" />
           </Link>
         </div>
       ) : null}
@@ -102,7 +103,7 @@ export default async function HomePage() {
       {!anySession || !hasDecks ? (
         <div className="card p-6">
           <h2 className="mb-4 font-semibold">Get started with Quizy</h2>
-          <ol className="space-y-3 text-sm">
+          <ol className="stagger space-y-3 text-sm">
             <li className="flex items-center gap-3">
               <Check done /> Create your account
             </li>
@@ -122,17 +123,17 @@ export default async function HomePage() {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-semibold">Your decks</h2>
-          {hasDecks ? <Link href="/library" className="text-sm text-dim hover:text-ink">View all →</Link> : null}
+          {hasDecks ? <Link href="/library" className="text-sm text-dim hover:text-ink">View all <Icon name="arrowRight" className="inline h-3.5 w-3.5" /></Link> : null}
         </div>
         {hasDecks ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {decks.slice(0, 6).map((d) => {
               const due = d.cards.filter((c) => c.dueDate <= eod).length;
               return (
-                <Link key={d.id} href={`/deck/${d.id}`} className="card p-5 transition-colors hover:border-dim">
+                <Link key={d.id} href={`/deck/${d.id}`} className="card card-hover p-5">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold leading-snug">{d.name}</h3>
-                    {d.pinned ? <span className="badge">★</span> : null}
+                    {d.pinned ? <span className="badge"><Icon name="starFilled" className="h-3 w-3" /></span> : null}
                   </div>
                   <div className="mt-3 flex items-center gap-2 text-xs text-faint">
                     <span>{d.cards.length} cards</span>
@@ -140,7 +141,7 @@ export default async function HomePage() {
                     <span>{due > 0 ? <span className="text-ink">{due} due</span> : "no due cards"}</span>
                   </div>
                   <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-surface2">
-                    <div className="h-full bg-accent" style={{ width: `${d.cards.length ? Math.round((d.cards.filter((c) => isMastered(c.intervalDays)).length / d.cards.length) * 100) : 0}%` }} />
+                    <div className="bar-fill h-full bg-accent" style={{ width: `${d.cards.length ? Math.round((d.cards.filter((c) => isMastered(c.intervalDays)).length / d.cards.length) * 100) : 0}%` }} />
                   </div>
                 </Link>
               );

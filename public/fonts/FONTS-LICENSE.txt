@@ -1,0 +1,4 @@
+Fredoka and DM Sans are licensed under the SIL Open Font License 1.1.
+Fredoka: Copyright 2016 The Fredoka Project Authors (https://github.com/hafontia/Fredoka-One).
+DM Sans: Copyright 2014 The DM Sans Project Authors (https://github.com/googlefonts/dm-fonts).
+License text: https://openfontlicense.org

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, pageLabel } from "@/lib/client";
+import { Icon } from "@/components/Icon";
 
 interface Section {
   id: string;
@@ -73,7 +74,7 @@ export default function DeckSummaryPage() {
       <div className="mb-6 flex items-start justify-between gap-3 print:hidden">
         <div>
           <Link href={`/deck/${id}`} className="text-xs text-faint hover:text-dim">
-            ← {deck?.name || "Deck"}
+            <Icon name="arrowLeft" /> {deck?.name || "Deck"}
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Cheat sheet</h1>
           <p className="mt-1 text-sm text-dim">

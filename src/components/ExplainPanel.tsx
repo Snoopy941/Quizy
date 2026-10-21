@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { Icon } from "@/components/Icon";
 
 interface Turn {
   role: "user" | "assistant";
@@ -54,7 +55,7 @@ export function ExplainPanel({ cardId, onClose }: { cardId: string; onClose: () 
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold">Explain this</h3>
         <button className="btn-ghost px-2 py-1 text-xs" onClick={onClose} aria-label="Close explanation">
-          ✕
+          <Icon name="x" />
         </button>
       </div>
       <div ref={scrollRef} className="max-h-72 space-y-3 overflow-y-auto pr-1">

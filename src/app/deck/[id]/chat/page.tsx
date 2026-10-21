@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { Icon } from "@/components/Icon";
 
 interface Turn {
   role: "user" | "assistant";
@@ -59,7 +60,7 @@ export default function DeckChatPage() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <Link href={`/deck/${id}`} className="text-xs text-faint hover:text-dim">
-            ← {deckName || "Deck"}
+            <Icon name="arrowLeft" /> {deckName || "Deck"}
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Ask your document</h1>
           <p className="mt-1 text-sm text-dim">Answers come only from your material, with page references.</p>

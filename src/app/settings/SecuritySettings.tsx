@@ -43,7 +43,7 @@ export function SecuritySettings() {
           setMsg(null);
           try {
             await api("/api/auth/password", { method: "POST", body: JSON.stringify({ current, next }) });
-            setMsg(pwSet ? "Password changed ✓ — other devices were signed out." : "Password added ✓ — you can now also sign in with your email.");
+            setMsg(pwSet ? "Password changed. other devices were signed out." : "Password added. You can now also sign in with your email.");
             setAccount((a) => (a ? { ...a, hasPassword: true } : a));
             setCurrent("");
             setNext("");

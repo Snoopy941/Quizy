@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { Icon } from "@/components/Icon";
 
 interface Issue {
   cardId: string;
@@ -75,7 +76,7 @@ export default function DeckQualityPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <Link href={`/deck/${id}`} className="text-xs text-faint hover:text-dim">
-        ← {deckName || "Deck"}
+        <Icon name="arrowLeft" /> {deckName || "Deck"}
       </Link>
       <div className="mb-6 flex items-start justify-between gap-3">
         <div>
@@ -105,7 +106,7 @@ export default function DeckQualityPage() {
       ) : null}
       {error ? <p className="mb-4 text-sm text-dim">{error}</p> : null}
       {!running && progress && !issues.length ? (
-        <div className="card p-10 text-center text-sm text-dim">No problems found — these cards look good. 🎉</div>
+        <div className="card anim-rise p-10 text-center text-sm text-dim"><Icon name="shieldCheck" className="anim-pop mx-auto mb-3 h-10 w-10 text-ink" />No problems found — these cards look good.</div>
       ) : null}
       <div className="space-y-3">
         {issues.map((i, n) => {
@@ -146,7 +147,7 @@ export default function DeckQualityPage() {
                   )}
                 </div>
               ) : (
-                <p className="mt-3 text-right text-xs text-faint">{state === "fixed" ? "Fixed ✓" : "Dismissed"}</p>
+                <p className="mt-3 text-right text-xs text-faint">{state === "fixed" ? <><Icon name="check" /> Fixed</> : "Dismissed"}</p>
               )}
             </div>
           );

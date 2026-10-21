@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { DesktopBar } from "@/components/DesktopBar";
 import { api } from "@/lib/client";
 import { playFlip } from "@/lib/sound";
+import { Icon } from "@/components/Icon";
 
 interface SharedCard {
   id: string;
@@ -86,7 +87,7 @@ export function ShareClient({ shareId }: { shareId: string }) {
       ) : mode === "list" ? (
         <>
           <button className="btn-primary mt-6" onClick={() => setMode("study")}>
-            ▶ Browse as flashcards
+            <Icon name="play" /> Browse as flashcards
           </button>
           <ul className="mt-6 space-y-2">
             {deck.cards.map((c) => (
@@ -109,7 +110,7 @@ export function ShareClient({ shareId }: { shareId: string }) {
               Card {idx + 1} of {deck.cards.length}
             </span>
             <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => { setMode("list"); setFlipped(false); }}>
-              ✕ Exit
+              <Icon name="x" /> Exit
             </button>
           </div>
           <div
@@ -150,14 +151,14 @@ export function ShareClient({ shareId }: { shareId: string }) {
               disabled={idx === 0}
               onClick={() => { setIdx((i) => Math.max(0, i - 1)); setFlipped(false); }}
             >
-              ← Prev
+              <Icon name="arrowLeft" /> Prev
             </button>
             <button
               className="btn-primary"
               disabled={idx >= deck.cards.length - 1}
               onClick={() => { setIdx((i) => Math.min(deck.cards.length - 1, i + 1)); setFlipped(false); }}
             >
-              Next →
+              Next <Icon name="arrowRight" />
             </button>
           </div>
         </div>

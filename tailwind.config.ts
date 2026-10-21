@@ -21,8 +21,9 @@ const config: Config = {
         bad: "rgb(var(--c-bad) / <alpha-value>)",
       },
       fontFamily: {
+        display: ["Fredoka", "DM Sans", "ui-sans-serif", "system-ui", "sans-serif"],
         sans: [
-          "Inter",
+          "DM Sans",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",

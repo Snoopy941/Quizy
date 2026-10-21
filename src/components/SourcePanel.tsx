@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, pageLabel, sourceKindLabel } from "@/lib/client";
 import { findQuoteRange } from "@/lib/chunk";
+import { Icon } from "@/components/Icon";
 
 interface SourceData {
   page: number | null;
@@ -47,7 +48,7 @@ export function SourcePanel({ cardId, onClose }: { cardId: string; onClose: () =
             {data?.section?.heading ? <p className="mt-0.5 text-xs text-dim">{data.section.heading}</p> : null}
           </div>
           <button className="btn-ghost px-2.5 py-1.5 text-xs" onClick={onClose} aria-label="Close">
-            ✕
+            <Icon name="x" />
           </button>
         </div>
 
@@ -84,7 +85,8 @@ export function SourcePanel({ cardId, onClose }: { cardId: string; onClose: () =
           <div className="mt-4 flex justify-end">
             <a href={openHref} target="_blank" rel="noreferrer" className="btn-secondary px-3 py-1.5 text-xs">
               Open {sourceKindLabel(data?.sourceType)}
-              {data?.sourceType === "pdf" && label ? ` at ${label}` : ""} ↗
+              {data?.sourceType === "pdf" && label ? ` at ${label}` : ""}
+              <Icon name="external" />
             </a>
           </div>
         ) : null}

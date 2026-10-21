@@ -46,14 +46,14 @@ export default async function DeckStatsPage({ params }: { params: Promise<{ id: 
   const max = Math.max(1, ...daily.map((d) => d.count));
 
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{deck.name} — Stats</h1>
         <p className="mt-1 text-sm text-dim">Progress and history for this deck.</p>
       </div>
 
       {/* counts */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+      <div className="stagger grid grid-cols-2 gap-3 md:grid-cols-5">
         <StatTile label="Total cards" value={stats.total} />
         <StatTile label="Due today" value={stats.dueToday} />
         <StatTile label="New" value={stats.new} />
@@ -71,7 +71,7 @@ export default async function DeckStatsPage({ params }: { params: Promise<{ id: 
           {daily.map((d) => (
             <div key={d.date} className="group relative flex-1">
               <div
-                className="w-full rounded-t-sm bg-accent/70 transition-all group-hover:bg-accent"
+                className="bar-grow w-full rounded-t-sm bg-accent/70 transition-all group-hover:bg-accent"
                 style={{ height: `${Math.max(3, (d.count / max) * 112)}px` }}
                 title={`${d.count} reviews · ${d.date}`}
               />
@@ -99,7 +99,7 @@ export default async function DeckStatsPage({ params }: { params: Promise<{ id: 
                   </span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface2">
-                  <div className="h-full bg-accent transition-all" style={{ width: `${cat.pct}%` }} />
+                  <div className="bar-fill h-full bg-accent transition-all" style={{ width: `${cat.pct}%` }} />
                 </div>
               </div>
             ))}

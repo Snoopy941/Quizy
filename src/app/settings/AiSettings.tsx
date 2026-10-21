@@ -59,7 +59,7 @@ export function AiSettings() {
     return () => clearInterval(t);
   }, [st?.builtin.status, load]);
 
-  const save = async (settings: Record<string, unknown>, note = "Saved ✓") => {
+  const save = async (settings: Record<string, unknown>, note = "Saved") => {
     setSaving(true);
     setMsg(null);
     try {
@@ -78,9 +78,9 @@ export function AiSettings() {
     const poll = setInterval(() => void load(), 1500);
     try {
       const r = await api<{ ok: boolean; label: string; ms: number; error?: string }>("/api/ai/test", { method: "POST" });
-      setMsg(`✓ ${r.label} answered in ${(r.ms / 1000).toFixed(1)}s`);
+      setMsg(`${r.label} answered in ${(r.ms / 1000).toFixed(1)}s`);
     } catch (e) {
-      setMsg(`✗ ${e instanceof Error ? e.message : "Test failed"}`);
+      setMsg(`Test failed: ${e instanceof Error ? e.message : "unknown error"}`);
     }
     clearInterval(poll);
     await load();

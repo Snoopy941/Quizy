@@ -9,6 +9,7 @@ import { DownloadsSettings } from "./DownloadsSettings";
 import { SecuritySettings } from "./SecuritySettings";
 import { AboutSettings } from "./AboutSettings";
 import { PhoneSettings } from "./PhoneSettings";
+import { Icon } from "@/components/Icon";
 
 interface Me {
   user: { id: string; email: string; name: string; createdAt: string };
@@ -60,10 +61,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="stagger mx-auto max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        {saved ? <span className="badge">Saved ✓</span> : null}
+        {saved ? <span className="badge anim-pop"><Icon name="check" /> Saved</span> : null}
       </div>
 
       {/* Account */}
@@ -103,7 +104,7 @@ export default function SettingsPage() {
                   : "border-line hover:border-faint"
               }`}
             >
-              {t === "dark" ? "◻ Dark" : "◼ Light"}
+              <span className="inline-flex items-center gap-2"><Icon name={t === "dark" ? "moon" : "sun"} /> {t === "dark" ? "Dark" : "Light"}</span>
             </button>
           ))}
         </div>
@@ -145,7 +146,7 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
-          <p className="mt-1.5 text-[11px] text-faint">Low ≈ 3, Medium ≈ 4, High ≈ 5 cards per section of your document.</p>
+          <p className="mt-1.5 text-[11px] text-faint">Low about 3, Medium about 4, High about 5 cards per section of your document.</p>
         </div>
       </section>
 

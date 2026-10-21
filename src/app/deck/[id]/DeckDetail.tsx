@@ -8,6 +8,7 @@ import { siteUrl } from "@/lib/site";
 import type { DeckData, CardRow, ChunkRow } from "./types";
 import { CardList } from "./CardList";
 import { AddCardForm } from "./AddCardForm";
+import { Icon } from "@/components/Icon";
 
 export function DeckDetail({ deckId }: { deckId: string }) {
   const router = useRouter();
@@ -155,12 +156,12 @@ export function DeckDetail({ deckId }: { deckId: string }) {
               </form>
             ) : (
               <h1
-                className="cursor-text text-2xl font-bold tracking-tight hover:opacity-80"
+                className="group cursor-text text-3xl font-semibold tracking-tight"
                 title="Click to rename"
                 onClick={() => setRenaming(true)}
               >
                 {deck.name}
-                <span className="ml-2 text-sm font-normal text-faint">✎</span>
+                <span className="ml-2 inline-block align-middle text-faint opacity-60 transition-opacity group-hover:opacity-100"><Icon name="pencil" className="h-4 w-4" /></span>
               </h1>
             )}
             <p className="mt-1 text-sm text-dim">
@@ -168,15 +169,15 @@ export function DeckDetail({ deckId }: { deckId: string }) {
               {deck.lastStudiedAt ? ` · last studied ${timeAgo(deck.lastStudiedAt)}` : ""}
             </p>
             {deck.pdfUrl ? (
-              <a href={deck.pdfUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-faint underline underline-offset-2 hover:text-dim">
-                View source {sourceKindLabel(deck.sourceType)} ↗
+              <a href={deck.pdfUrl} target="_blank" rel="noreferrer" className="mt-1 inline-flex items-center gap-1 text-xs text-faint underline underline-offset-2 hover:text-dim">
+                View source {sourceKindLabel(deck.sourceType)} <Icon name="external" className="h-3 w-3" />
               </a>
             ) : deck.sourceType === "anki" ? (
               <span className="mt-1 inline-block text-xs text-faint">Imported from Anki</span>
             ) : null}
           </div>
           <div className="relative shrink-0">
-            <button className="btn-secondary" onClick={() => setMenuOpen(!menuOpen)}>•••</button>
+            <button className="btn-secondary px-3" aria-label="Deck options" onClick={() => setMenuOpen(!menuOpen)}><Icon name="more" className="h-5 w-5" /></button>
             {menuOpen ? (
               <div className="absolute right-0 top-12 z-30 w-48 overflow-hidden rounded-xl border border-line bg-surface shadow-xl">
                 <MenuBtn onClick={() => { setMenuOpen(false); setInstructionsOpen(true); }}>AI instructions</MenuBtn>
@@ -241,7 +242,7 @@ export function DeckDetail({ deckId }: { deckId: string }) {
         {deck.aiSource === "demo" && !processing ? (
           <p className="mt-3 text-xs text-faint">
             These cards were made by the offline demo generator (MOCK_AI=1), not a real AI. Set up AI in Settings, then
-            use ••• → Re-generate for proper cards.
+            use the <Icon name="more" className="inline h-3.5 w-3.5" /> menu, then Re-generate for proper cards.
           </p>
         ) : null}
 
@@ -250,20 +251,20 @@ export function DeckDetail({ deckId }: { deckId: string }) {
         ) : null}
 
         {!processing && cards.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Link href={`/deck/${deckId}/study`} className="btn-primary">▶ Study now</Link>
+          <div className="stagger mt-5 flex flex-wrap gap-2">
+            <Link href={`/deck/${deckId}/study`} className="btn-primary"><Icon name="play" className="h-3.5 w-3.5" /> Study now</Link>
             <TimedStudyButton deckId={deckId} />
-            <Link href={`/deck/${deckId}/study?mode=weak`} className="btn-secondary" title="Cards you miss most">Weak spots</Link>
-            <Link href={`/deck/${deckId}/stats`} className="btn-secondary">Stats</Link>
-            <button className="btn-secondary" onClick={() => setAddedCard(true)}>+ Add card</button>
+            <Link href={`/deck/${deckId}/study?mode=weak`} className="btn-secondary" title="Cards you miss most"><Icon name="target" className="h-4 w-4" /> Weak spots</Link>
+            <Link href={`/deck/${deckId}/stats`} className="btn-secondary"><Icon name="chart" className="h-4 w-4" /> Stats</Link>
+            <button className="btn-secondary" onClick={() => setAddedCard(true)}><Icon name="plus" className="h-4 w-4" /> Add card</button>
           </div>
         ) : null}
 
         {!processing && (cards.length > 0 || chunks.length > 0) ? (
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Link href={`/deck/${deckId}/chat`} className="btn-ghost px-3 py-1.5 text-xs">💬 Ask the document</Link>
-            {chunks.length ? <Link href={`/deck/${deckId}/summary`} className="btn-ghost px-3 py-1.5 text-xs">📝 Cheat sheet</Link> : null}
-            {cards.length ? <Link href={`/deck/${deckId}/quality`} className="btn-ghost px-3 py-1.5 text-xs">🔍 Check card quality</Link> : null}
+          <div className="stagger mt-2 flex flex-wrap gap-1">
+            <Link href={`/deck/${deckId}/chat`} className="btn-ghost icon-nudge px-3 py-1.5 text-xs"><Icon name="chat" className="h-3.5 w-3.5" /> Ask the document</Link>
+            {chunks.length ? <Link href={`/deck/${deckId}/summary`} className="btn-ghost icon-nudge px-3 py-1.5 text-xs"><Icon name="notes" className="h-3.5 w-3.5" /> Cheat sheet</Link> : null}
+            {cards.length ? <Link href={`/deck/${deckId}/quality`} className="btn-ghost icon-nudge px-3 py-1.5 text-xs"><Icon name="shieldCheck" className="h-3.5 w-3.5" /> Check card quality</Link> : null}
           </div>
         ) : null}
       </div>
@@ -340,9 +341,9 @@ function TimedStudyButton({ deckId }: { deckId: string }) {
   const router = useRouter();
   return (
     <div className="relative">
-      <button className="btn-secondary" onClick={() => setOpen(!open)}>⏱ Timed</button>
+      <button className="btn-secondary" onClick={() => setOpen(!open)}><Icon name="timer" className="h-4 w-4" /> Timed</button>
       {open ? (
-        <div className="absolute left-0 top-12 z-30 w-52 rounded-xl border border-line bg-surface p-3 shadow-xl">
+        <div className="anim-pop absolute left-0 top-12 z-30 w-52 origin-top-left rounded-xl border border-line bg-surface p-3 shadow-xl">
           <p className="mb-2 text-xs font-medium text-dim">Session length</p>
           <div className="grid grid-cols-3 gap-1.5">
             {[5, 10, 15, 30, 60].map((m) => (

@@ -9,6 +9,8 @@
 - If an older version was installed somewhere else, the update leaves that folder alone instead of uninstalling there. You can delete the old Quizy files from it yourself.
 - Uninstalling only removes Quizy's own files.
 
+**A fresh look.** The app now matches quizy.study: black and white, new rounded fonts (built in, so they work offline), simple line icons instead of emoji, and smooth animations when pages open, cards are dealt, and you finish a session.
+
 ## 1.2.0
 
 Quizy 1.2 is the biggest update yet. Since 1.0, Quizy has gained a fully offline AI, support for more file types and smarter studying.

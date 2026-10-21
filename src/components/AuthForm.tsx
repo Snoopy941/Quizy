@@ -103,12 +103,12 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     <div className="flex min-h-screen items-center justify-center bg-bg px-4 pb-12 chromeless-pad">
       <DesktopBar />
       <div className="w-full max-w-sm">
-        <div className="mb-10 flex justify-center">
+        <div className="anim-pop mb-10 flex justify-center">
           <Logo size="lg" />
         </div>
 
         {googleWait ? (
-          <div className="card p-6 text-center">
+          <div className="card anim-rise p-6 text-center">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-line border-t-ink" aria-hidden="true" />
             <h1 className="text-lg font-bold">Finish signing in with Google</h1>
             <p className="mt-2 text-sm text-dim">
@@ -124,11 +124,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             </div>
           </div>
         ) : recoveryCode ? (
-          <div className="card p-6">
+          <div className="card anim-rise p-6">
             <RecoveryCodeNotice code={recoveryCode} onDone={() => (window.location.href = "/")} doneLabel="Continue to Quizy" />
           </div>
         ) : (
-        <form onSubmit={submit} className="card p-6">
+        <form onSubmit={submit} className="card anim-rise p-6">
           <h1 className="mb-5 text-lg font-bold">{isSignup ? "Create your account" : "Welcome back"}</h1>
 
           {error ? (

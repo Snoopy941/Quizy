@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CARD_LANGUAGES, OCR_LANGUAGE_NAMES } from "@/lib/client";
+import { Icon } from "@/components/Icon";
 
 const DENSITIES = [
   { id: "low", label: "Low", hint: "~3 cards / section" },
@@ -256,7 +257,7 @@ export default function NewDeckPage() {
             {error}
             {needsAi ? (
               <Link href="/settings" className="ml-2 underline underline-offset-2">
-                Open Settings →
+                Open Settings <Icon name="arrowRight" />
               </Link>
             ) : null}
           </div>

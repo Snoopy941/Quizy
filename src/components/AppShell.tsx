@@ -9,6 +9,7 @@ import { ShortcutsOverlay } from "./ShortcutsOverlay";
 import { DesktopBar } from "./DesktopBar";
 import { WindowControls } from "./WindowControls";
 import { UpdateBanner } from "./UpdateBanner";
+import { Icon } from "./Icon";
 
 const NAV = [
   { href: "/", label: "Home", icon: "home" as const },
@@ -20,57 +21,7 @@ const NAV = [
 type NavIconName = "home" | "books" | "repeat" | "gear" | "logout";
 
 function NavIcon({ name, className }: { name: NavIconName; className?: string }) {
-  const cls = className ?? "h-[18px] w-[18px]";
-  const common = {
-    className: cls,
-    viewBox: "0 0 24 24",
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.8,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-  };
-  if (name === "home") {
-    return (
-      <svg {...common}>
-        <path d="M3 10.5 12 3l9 7.5" />
-        <path d="M5 9.5V21h14V9.5" />
-      </svg>
-    );
-  }
-  if (name === "books") {
-    return (
-      <svg {...common}>
-        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14z" />
-        <path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-4.5" />
-      </svg>
-    );
-  }
-  if (name === "repeat") {
-    return (
-      <svg {...common}>
-        <path d="m17 2 4 4-4 4" />
-        <path d="M3 11v-1a4 4 0 0 1 4-4h14" />
-        <path d="m7 22-4-4 4-4" />
-        <path d="M21 13v1a4 4 0 0 1-4 4H3" />
-      </svg>
-    );
-  }
-  if (name === "gear") {
-    return (
-      <svg {...common}>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0-1.51 1H3z" />
-      </svg>
-    );
-  }
-  return (
-    <svg {...common}>
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <path d="m16 17 5-5-5-5" />
-      <path d="M21 12H9" />
-    </svg>
-  );
+  return <Icon name={name} className={className ?? "h-[18px] w-[18px]"} />;
 }
 
 function isTypingTarget(t: EventTarget | null): boolean {
@@ -131,14 +82,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Link
         key={item.href}
         href={item.href}
-        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-          active ? "bg-surface2 text-ink" : "text-dim hover:bg-surface2/60 hover:text-ink"
+        className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+          active ? "bg-surface2 text-ink" : "text-dim hover:translate-x-0.5 hover:bg-surface2/60 hover:text-ink"
         }`}
       >
-        <NavIcon name={item.icon} />
+        <span
+          aria-hidden="true"
+          className={`absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-ink transition-all duration-300 ${
+            active ? "opacity-100" : "scale-y-0 opacity-0"
+          }`}
+        />
+        <span className="transition-transform duration-300 group-hover:scale-110">
+          <NavIcon name={item.icon} />
+        </span>
         <span>{item.label}</span>
         {item.href === "/review" && dueCount > 0 ? (
-          <span className="ml-auto rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-bg">
+          <span className="anim-pop ml-auto rounded-full bg-accent px-2 py-0.5 text-[11px] font-bold text-bg">
             {dueCount}
           </span>
         ) : null}
@@ -153,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <UpdateBanner />
 
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-bg px-4 pt-14 pb-6 md:flex">
-        <Link href="/" className="mb-8 px-2">
+        <Link href="/" className="logo-link mb-8 px-2">
           <Logo />
         </Link>
         <nav className="flex flex-1 flex-col gap-1">{NAV.map(navItem)}</nav>
@@ -184,7 +143,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <main className="min-w-0 flex-1 pb-24 pt-16 md:pb-10 md:pt-10">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-8">{children}</div>
+        <div key={pathname} className="page-in mx-auto w-full max-w-5xl px-4 py-6 md:px-8">
+          {children}
+        </div>
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-stretch border-t border-line bg-bg/95 backdrop-blur md:hidden">

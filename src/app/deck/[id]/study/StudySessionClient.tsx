@@ -12,6 +12,7 @@ import { ExplainPanel } from "@/components/ExplainPanel";
 import { SourcePanel } from "@/components/SourcePanel";
 import { pageLabel, SPEECH_LANG } from "@/lib/client";
 import { canSpeak, speak, startRecording, stopSpeaking, type Recorder } from "@/lib/audio";
+import { Icon } from "@/components/Icon";
 
 type GradeKey = "again" | "hard" | "good" | "easy";
 
@@ -296,7 +297,7 @@ export function StudySessionClient({
   const toggleVoice = useCallback(async () => {
     if (!card) return;
     if (voiceAvailable === false) {
-      setVoiceMsg("Voice answers need a one-time download — Settings → Downloads → Voice answers.");
+      setVoiceMsg("Voice answers need a one-time download — Settings > Downloads > Voice answers.");
       return;
     }
     if (recording === "recording") {
@@ -493,8 +494,8 @@ export function StudySessionClient({
 
   if (!cards.length) {
     return (
-      <div className="card mx-auto max-w-md p-10 text-center">
-        <div className="text-4xl">🎉</div>
+      <div className="card anim-rise mx-auto max-w-md p-10 text-center">
+        <Icon name={mode === "weak" ? "target" : "sparkles"} className="anim-pop mx-auto h-10 w-10" strokeWidth={1.6} />
         <h2 className="mt-3 text-lg font-bold">{mode === "weak" ? "No weak spots yet" : "All caught up!"}</h2>
         <p className="mt-1 text-sm text-dim">
           {mode === "weak" ? "Cards you get wrong will show up here for extra practice." : "No cards are due right now."}
@@ -590,7 +591,7 @@ export function StudySessionClient({
       {/* top bar */}
       <div className="mb-4 flex items-center justify-between gap-3">
         <button className="btn-ghost px-2.5 py-1.5 text-xs" onClick={() => router.back()}>
-          ← Exit
+          <Icon name="arrowLeft" /> Exit
         </button>
         {timed ? (
           <div className="text-center">
@@ -619,7 +620,8 @@ export function StudySessionClient({
 
       {/* card */}
       <div
-        className="flip-scene select-none"
+        key={card.id}
+        className="flip-scene anim-deal select-none"
         onClick={() => {
           // Plain cards flip on click; interactive cards flip via their controls.
           if (!choicesFor(card) && !TYPED_TYPES.has(card.type)) reveal();
@@ -642,7 +644,7 @@ export function StudySessionClient({
                       sayFront();
                     }}
                   >
-                    🔊
+                    <Icon name="speaker" />
                   </button>
                 ) : null}
               </span>
@@ -697,14 +699,14 @@ export function StudySessionClient({
                     disabled={answer.checking || flipped || recording === "transcribing"}
                     onClick={() => void toggleVoice()}
                   >
-                    {recording === "recording" ? "■" : recording === "transcribing" ? "…" : "🎤"}
+                    {recording === "recording" ? <Icon name="stop" /> : recording === "transcribing" ? "…" : <Icon name="mic" />}
                   </button>
                   <button className="btn-secondary shrink-0 px-4" disabled={answer.checking || flipped}>
                     {answer.checking ? "Checking…" : "Check"}
                   </button>
                 </form>
               ) : null}
-              {recording === "recording" ? <p className="text-xs text-dim">Listening… click ■ (or press V) when you&apos;re done.</p> : null}
+              {recording === "recording" ? <p className="text-xs text-dim">Listening… click stop (or press V) when you&apos;re done.</p> : null}
               {voiceMsg ? <p className="max-w-md text-center text-xs text-dim">{voiceMsg}</p> : null}
             </div>
             <p className="text-center text-xs text-faint">
@@ -723,11 +725,11 @@ export function StudySessionClient({
             <div className="flex flex-1 flex-col items-center justify-center gap-4 px-2 py-6 text-center">
               {answer.result ? (
                 <div
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold ${
+                  className={`anim-pop inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${
                     answer.result.verdict === "correct" ? "border-accent text-ink" : "border-line text-dim"
                   }`}
                 >
-                  {answer.result.verdict === "correct" ? "✓ Correct" : answer.result.verdict === "partial" ? "≈ Partly right" : "✗ Not quite"}
+                  {answer.result.verdict === "correct" ? <><Icon name="check" /> Correct</> : answer.result.verdict === "partial" ? <><Icon name="approx" /> Partly right</> : <><Icon name="x" /> Not quite</>}
                 </div>
               ) : null}
               {answer.picked && answer.result?.verdict !== "correct" ? (
@@ -750,16 +752,16 @@ export function StudySessionClient({
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => setExplainOpen((o) => !o)}>
-                💡 Explain <kbd className="ml-1 hidden text-faint md:inline">E</kbd>
+                <Icon name="bulb" /> Explain <kbd className="ml-1 hidden text-faint md:inline">E</kbd>
               </button>
               {canSpeak() ? (
                 <button className="btn-ghost px-3 py-1.5 text-xs" onClick={sayBack} title="Read aloud (R)">
-                  🔊 Read
+                  <Icon name="speaker" /> Read
                 </button>
               ) : null}
               {card.hasSource ? (
                 <button className="btn-ghost px-3 py-1.5 text-xs" onClick={() => setSourceOpen(true)}>
-                  📄 Source{pageLabel(card.sourceType, card.sourcePage) ? ` · ${pageLabel(card.sourceType, card.sourcePage)}` : ""}
+                  <Icon name="file" /> Source{pageLabel(card.sourceType, card.sourcePage) ? ` · ${pageLabel(card.sourceType, card.sourcePage)}` : ""}
                 </button>
               ) : null}
             </div>
@@ -801,8 +803,8 @@ export function StudySessionClient({
       </div>
 
       {lastGrade ? (
-        <div className="mt-3 text-center text-xs text-dim">
-          {lastGrade.correct ? "✓ " : "✗ "}
+        <div className="anim-rise mt-3 text-center text-xs text-dim">
+          {lastGrade.correct ? <Icon name="check" className="mr-1 inline h-3.5 w-3.5" /> : <Icon name="x" className="mr-1 inline h-3.5 w-3.5" />}
           {lastGrade.label} — next card…
         </div>
       ) : null}

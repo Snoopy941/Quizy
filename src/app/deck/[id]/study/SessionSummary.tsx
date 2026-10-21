@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { fmtDuration } from "@/lib/client";
+import { Icon } from "@/components/Icon";
 
 export interface Summary {
   reviewed: number;
@@ -24,12 +25,15 @@ export function SessionSummary({
   const router = useRouter();
 
   return (
-    <div className="card mx-auto max-w-md p-8 text-center">
-      <div className="text-4xl">{summary.accuracy >= 80 ? "🏆" : summary.accuracy >= 50 ? "💪" : "📚"}</div>
+    <div className="card anim-rise mx-auto max-w-md p-8 text-center">
+      <div className="relative mx-auto flex h-16 w-16 items-center justify-center">
+        <span className="ring-pulse absolute inset-0 rounded-full text-ink/40" />
+        <Icon name={summary.accuracy >= 80 ? "trophy" : summary.accuracy >= 50 ? "muscle" : "books"} className="anim-pop h-10 w-10" strokeWidth={1.6} />
+      </div>
       <h2 className="mt-3 text-xl font-bold">Session complete</h2>
       <p className="mt-1 text-sm text-dim">{timed ? "Time's up — nice work." : "Nice work!"}</p>
 
-      <div className="mt-6 grid grid-cols-3 gap-2">
+      <div className="stagger mt-6 grid grid-cols-3 gap-2">
         <div className="rounded-xl border border-line p-4">
           <div className="text-2xl font-extrabold tabular-nums">{summary.reviewed}</div>
           <div className="text-[11px] text-dim">reviewed</div>
