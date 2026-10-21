@@ -24,7 +24,7 @@ Monochrome black-and-white design, dark mode by default with a light toggle.
 - **Images on cards**: the main figure from each PDF page / slide is attached to its cards automatically; add or change a card image yourself
 - **Voice**: read questions/answers aloud (Windows voices, offline) and answer by speaking (Whisper on Groq)
 - **Languages**: write cards in another language than the source, OCR for 20 languages (downloaded on demand)
-- **Desktop app**: automatic updates from GitHub Releases, one ~160 MB installer, free-port fallback, **study on your phone** over Wi-Fi (QR pairing)
+- **Desktop app**: automatic updates from GitHub Releases, one ~140 MB installer, free-port fallback, **study on your phone** over Wi-Fi (QR pairing)
 - **Polish**: dark/light theme, sound effects toggle, confetti on session completion, 50-correct easter egg, onboarding checklist, empty states, mobile bottom tabs, resume after closing the tab mid-session
 
 ## Quick start (local)
@@ -72,7 +72,7 @@ Build the real installer — license screen, desktop + Start Menu shortcuts, lau
 
 ```bash
 bash scripts/build-installer.sh
-# → installer-out/Quizy-Setup-<version>.exe  (~160 MB) + .blockmap + latest.yml for updates
+# → installer-out/Quizy-Setup-<version>.exe  (~140 MB) + .blockmap + latest.yml for updates
 ```
 
 The first build downloads Tesseract's English OCR model (cached in `installer/cache/`). Put the Quizy AI key in `ai-key.txt` first, or the app will ask users for their own key.

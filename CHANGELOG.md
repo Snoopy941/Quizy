@@ -9,7 +9,7 @@
 - If an older version was installed somewhere else, the update leaves that folder alone instead of uninstalling there. You can delete the old Quizy files from it yourself.
 - Uninstalling only removes Quizy's own files.
 
-**Quizy AI: free, fast and built in.** Quizy no longer runs an AI model on your computer. Making cards, explanations, chat and voice answers now use Quizy AI, a free online service, so there's nothing to download or set up and cards are written in seconds instead of minutes. You can still use your own API key (Groq, Gemini, OpenAI, OpenRouter or Ollama) in Settings. The installer is now one ~160 MB file, and updating removes the old 2 GB AI model.
+**Quizy AI: free, fast and built in.** Quizy no longer runs an AI model on your computer. Making cards, explanations, chat and voice answers now use Quizy AI, a free online service, so there's nothing to download or set up and cards are written in seconds instead of minutes. You can still use your own API key (Groq, Gemini, OpenAI, OpenRouter or Ollama) in Settings. The installer is now one ~140 MB file, and updating removes the old 2 GB AI model.
 
 **A fresh look.** The app now matches quizy.study: black and white, new rounded fonts (built in, so they work offline), simple line icons instead of emoji, and smooth animations when pages open, cards are dealt, and you finish a session.
 
