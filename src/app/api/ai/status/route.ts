@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getUserId, unauthorized } from "@/lib/session";
 import { resolveAiFromSettings } from "@/lib/ai";
-import { localAvailable, localStatus, modelName, needsModelDownload } from "@/lib/local-ai";
+import { QUIZY_AI_LABEL, quizyAiKey, secondsUntilFree } from "@/lib/quizy-ai";
 
-/** GET /api/ai/status — which AI is active and the state of the built-in model. */
+/** GET /api/ai/status — which AI is active, and whether Quizy AI is available. */
 export async function GET(req: NextRequest) {
   const userId = await getUserId(req);
   if (!userId) return unauthorized();
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     active: active ? { kind: active.kind, label: active.label, model: active.model } : null,
     preference: s?.aiProvider ?? "auto",
-    builtin: { available: localAvailable(), needsDownload: needsModelDownload(), model: modelName(), ...localStatus() },
+    builtin: { available: Boolean(quizyAiKey()), label: QUIZY_AI_LABEL, busyFor: secondsUntilFree() },
     api: {
       baseUrl: s?.aiBaseUrl ?? "",
       model: s?.aiModel ?? "",

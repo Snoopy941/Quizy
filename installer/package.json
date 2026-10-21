@@ -36,10 +36,6 @@
         "to": "seed"
       },
       {
-        "from": "staging/ai",
-        "to": "ai"
-      },
-      {
         "from": "staging/licenses",
         "to": "licenses"
       }
@@ -51,21 +47,11 @@
           "arch": [
             "x64"
           ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
         }
       ],
       "icon": "staging/icon.ico",
       "artifactName": "Quizy-Setup-${version}.${ext}",
       "signAndEditExecutable": true
-    },
-    "portable": {
-      "artifactName": "Quizy-${version}.exe",
-      "requestExecutionLevel": "user"
     },
     "nsis": {
       "oneClick": false,

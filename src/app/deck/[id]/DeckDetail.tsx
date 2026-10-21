@@ -203,7 +203,7 @@ export function DeckDetail({ deckId }: { deckId: string }) {
                     ? `Reading ${sourceKindLabel(deck.sourceType)} (OCR)…`
                     : `Reading ${sourceKindLabel(deck.sourceType)}…`
                   : deck.aiSource === "builtin"
-                    ? "Generating cards with the built-in AI…"
+                    ? "Generating cards with Quizy AI…"
                     : "Generating cards…"}
               </span>
               <span className="tabular-nums text-dim">{deck.genProgress}%</span>
@@ -213,7 +213,7 @@ export function DeckDetail({ deckId }: { deckId: string }) {
             </div>
             {deck.aiSource === "builtin" && deck.genStatus === "generating" ? (
               <p className="mt-2 text-[11px] text-faint">
-                Runs offline on this computer — about 20–60 s per section. Cards appear below as they&apos;re written; you can leave this page.
+                Cards appear below as they&apos;re written. You can leave this page.
               </p>
             ) : null}
           </div>

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUserId, unauthorized } from "@/lib/session";
-import { transcribeWav, whisperPaths } from "@/lib/voice";
+import { transcribeWav, voiceAvailable } from "@/lib/voice";
 
 /** GET — is voice input available? POST (body: 16 kHz mono WAV, ?lang=xx) → { text } */
 export async function GET(req: NextRequest) {
   const userId = await getUserId(req);
   if (!userId) return unauthorized();
-  return NextResponse.json({ available: Boolean(whisperPaths()) });
+  return NextResponse.json({ available: voiceAvailable() });
 }
 
 export async function POST(req: NextRequest) {

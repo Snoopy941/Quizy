@@ -6,24 +6,18 @@ import { api } from "@/lib/client";
 interface AiStatus {
   active: { kind: "builtin" | "api" | "demo"; label: string; model: string } | null;
   preference: "auto" | "builtin" | "api";
-  builtin: { available: boolean; needsDownload?: boolean; model: string; status: string; error: string | null; gpu: boolean | null; busy: number };
+  builtin: { available: boolean; label: string; busyFor: number };
   api: { baseUrl: string; model: string; hasKey: boolean; keyHint: string; envConfigured: boolean };
   demo: boolean;
 }
 
 const PRESETS = [
+  { id: "groq", label: "Groq (free)", baseUrl: "https://api.groq.com/openai/v1", model: "openai/gpt-oss-120b", needsKey: true },
+  { id: "gemini", label: "Gemini (free)", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-2.5-flash", needsKey: true },
   { id: "openai", label: "OpenAI", baseUrl: "https://api.openai.com/v1", model: "gpt-4o-mini", needsKey: true },
   { id: "openrouter", label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini", needsKey: true },
   { id: "ollama", label: "Ollama (this PC)", baseUrl: "http://localhost:11434/v1", model: "qwen3:4b", needsKey: false },
 ];
-
-const STATUS_TEXT: Record<string, string> = {
-  ready: "Running",
-  starting: "Loading the model…",
-  stopped: "Ready — starts automatically when needed",
-  error: "Couldn't start",
-  unavailable: "Not included in this install",
-};
 
 export function AiSettings() {
   const [st, setSt] = useState<AiStatus | null>(null);
@@ -52,13 +46,6 @@ export function AiSettings() {
     });
   }, [load]);
 
-  // Poll while the built-in model is loading
-  useEffect(() => {
-    if (st?.builtin.status !== "starting") return;
-    const t = setInterval(() => void load(), 1500);
-    return () => clearInterval(t);
-  }, [st?.builtin.status, load]);
-
   const save = async (settings: Record<string, unknown>, note = "Saved") => {
     setSaving(true);
     setMsg(null);
@@ -75,14 +62,12 @@ export function AiSettings() {
   const test = async () => {
     setTesting(true);
     setMsg(null);
-    const poll = setInterval(() => void load(), 1500);
     try {
       const r = await api<{ ok: boolean; label: string; ms: number; error?: string }>("/api/ai/test", { method: "POST" });
       setMsg(`${r.label} answered in ${(r.ms / 1000).toFixed(1)}s`);
     } catch (e) {
       setMsg(`Test failed: ${e instanceof Error ? e.message : "unknown error"}`);
     }
-    clearInterval(poll);
     await load();
     setTesting(false);
   };
@@ -125,31 +110,24 @@ export function AiSettings() {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {choice("auto", "Automatic", "Built-in if available, else your API key")}
-        {choice("builtin", "Built-in (offline)", st.builtin.available ? "Free, private, no key" : "Not in this install", !st.builtin.available)}
-        {choice("api", "API key", "Faster — OpenAI, OpenRouter, Ollama…")}
+        {choice("auto", "Automatic", "Your own key if you add one, otherwise Quizy AI")}
+        {choice("builtin", "Quizy AI", st.builtin.available ? "Free, nothing to set up" : "Not in this version", !st.builtin.available)}
+        {choice("api", "Your own key", "Groq, Gemini, OpenAI, Ollama…")}
       </div>
 
-      {/* Built-in */}
+      {/* Quizy AI */}
       <div className="mt-5 rounded-xl border border-line p-4">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium">Built-in AI · {st.builtin.model}</p>
-            <p className="mt-0.5 text-xs text-dim">
-              {STATUS_TEXT[st.builtin.status] ?? st.builtin.status}
-              {st.builtin.status === "ready" && st.builtin.gpu !== null ? ` · ${st.builtin.gpu ? "using your GPU" : "using your CPU"}` : ""}
-            </p>
-          </div>
-        </div>
-        {st.builtin.error ? <p className="mt-2 text-xs text-dim">{st.builtin.error}</p> : null}
-        {st.builtin.needsDownload ? (
-          <p className="mt-2 text-xs text-ink">
-            The AI engine is installed — download a model below under <b>Downloads</b> to turn it on (one time, then it works offline).
-          </p>
-        ) : null}
+        <p className="text-sm font-medium">Quizy AI</p>
+        <p className="mt-0.5 text-xs text-dim">
+          {st.builtin.available
+            ? st.builtin.busyFor > 0
+              ? "Busy right now because lots of people are using it. It frees up again shortly."
+              : "Ready. Free for everyone, with nothing to set up."
+            : "Not included in this version of Quizy."}
+        </p>
         <p className="mt-2 text-[11px] text-faint">
-          Runs entirely on this computer — your documents never leave it. Expect about 20–60 seconds per section on a
-          typical laptop (faster with a graphics card).
+          Quizy AI runs on Groq&apos;s servers, so the text of the section being turned into cards is sent there. Your decks and
+          files stay on this computer. Everyone shares its free limit; if it&apos;s busy, add your own free key below.
         </p>
       </div>
 
@@ -164,7 +142,7 @@ export function AiSettings() {
         }}
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-medium">API key (optional)</p>
+          <p className="text-sm font-medium">Your own API key (optional)</p>
           <div className="flex flex-wrap gap-1.5">
             {PRESETS.map((p) => (
               <button
@@ -195,7 +173,7 @@ export function AiSettings() {
               className="input"
               type="password"
               autoComplete="off"
-              placeholder={st.api.hasKey ? "Leave blank to keep the saved key" : "sk-…  (not needed for Ollama)"}
+              placeholder={st.api.hasKey ? "Leave blank to keep the saved key" : "Paste your key (not needed for Ollama)"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
             />

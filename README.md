@@ -1,13 +1,13 @@
 # Quizy — quizy.study
 
-**AI-powered study companion.** Add a PDF, Word document, PowerPoint, photo of your notes, or pasted text — Quizy extracts the text, writes flashcards with AI (offline, built in — no API key needed), and schedules them with spaced repetition (FSRS).
+**AI-powered study companion.** Add a PDF, Word document, PowerPoint, photo of your notes, or pasted text — Quizy extracts the text, writes flashcards with AI (free and built in: no API key needed), and schedules them with spaced repetition (FSRS).
 
 Monochrome black-and-white design, dark mode by default with a light toggle.
 
 ## Features
 
 - **Any study material → flashcards**: PDF, Word (.docx), PowerPoint (.pptx, incl. speaker notes), text/Markdown, pasted notes, and images or scanned PDFs (offline OCR) — drag-and-drop up to 50MB
-- **Built-in offline AI**: the desktop app ships a local model (Qwen3-4B-Instruct via llama.cpp) — free, private, no key. Optional API mode for any OpenAI-compatible endpoint (OpenAI, OpenRouter, Ollama…) configured in **Settings → AI**
+- **Quizy AI, free with no setup**: the app ships with a shared [Groq](https://groq.com) key (GPT-OSS 120B, falling back to GPT-OSS 20B and Qwen when one is rate-limited). Anyone can use their own key instead, for any OpenAI-compatible endpoint (Groq, Gemini, OpenAI, OpenRouter, Ollama…) in **Settings → AI**
 - **Card quality**: page/slide numbers on every card with a “Source” panel highlighting the supporting quote, JSON-schema-constrained output, validation/repair of malformed cards, near-duplicate removal, context-aware heading detection, sections generated in parallel, interrupted jobs resume on restart
 - **No silent fallback**: if the AI isn't set up or fails, you get a clear message — never placeholder cards
 - **5 card types**: definition, fill-in-the-blank, multiple choice, true/false, short answer
@@ -22,9 +22,9 @@ Monochrome black-and-white design, dark mode by default with a light toggle.
 - **Auth**: email + password (bcrypt + JWT httpOnly cookie sessions), sign-in rate limiting, real sign-out (invalidates every session), change password, offline password reset with a one-time **recovery code** (no email needed)
 - **AI study tools**: **Ask your document** (chat with page citations), **cheat sheet** summaries per section (printable), **card quality check** (flags vague/duplicate/give-away cards and suggests rewrites), **More like this** (3 new cards on a concept you keep missing), **Weak spots** review of your most-missed cards
 - **Images on cards**: the main figure from each PDF page / slide is attached to its cards automatically; add or change a card image yourself
-- **Voice**: read questions/answers aloud (Windows voices, offline) and answer by speaking (offline whisper.cpp, downloaded on first use)
+- **Voice**: read questions/answers aloud (Windows voices, offline) and answer by speaking (Whisper on Groq)
 - **Languages**: write cards in another language than the source, OCR for 20 languages (downloaded on demand)
-- **Desktop app**: automatic updates from GitHub Releases, lite installer (~150 MB, AI model downloads on first launch) or full offline installer, choice of AI model size, free-port fallback, **study on your phone** over Wi-Fi (QR pairing)
+- **Desktop app**: automatic updates from GitHub Releases, one ~160 MB installer, free-port fallback, **study on your phone** over Wi-Fi (QR pairing)
 - **Polish**: dark/light theme, sound effects toggle, confetti on session completion, 50-correct easter egg, onboarding checklist, empty states, mobile bottom tabs, resume after closing the tab mid-session
 
 ## Quick start (local)
@@ -39,7 +39,7 @@ npm run dev                 # http://localhost:4000
 Pick the AI in **Settings → AI**:
 
 - **API key** — paste an OpenAI/OpenRouter key, or point it at a local [Ollama](https://ollama.com) (`http://localhost:11434/v1`, model e.g. `qwen3:4b`, no key).
-- **Built-in** — in dev, run llama.cpp yourself and set `LOCAL_AI_URL=http://127.0.0.1:8080/v1`, or set `QUIZY_LLAMA_BIN` + `QUIZY_MODEL_PATH` and Quizy starts/stops `llama-server` for you.
+- **Quizy AI** — put a Groq API key in `ai-key.txt` at the repo root (or set `QUIZY_AI_KEY`). The file is gitignored and the installer build copies it into the app. Every copy of Quizy shares that key's free limits.
 - `MOCK_AI=1` enables a deterministic demo generator **only when nothing else is set up** — decks made with it are labelled.
 
 Env defaults still work for servers/Docker: `OPENAI_API_KEY`, `OPENAI_BASE_URL`, `OPENAI_MODEL`.
@@ -64,7 +64,7 @@ Then open `dist\Quizy\Quizy.exe`:
 - All data (database + uploaded PDFs) lives in `dist\Quizy\data\` — copy the folder to move it
 - Demo login: `demo@quizy.study` / `password123` (or create your own account)
 - Close the window to stop it, or use `Quit Quizy.exe` from the system tray flow
-- AI: the built-in model works out of the box; to use an API key instead, open **Settings → AI**
+- AI: Quizy AI works out of the box (needs internet); to use your own key instead, open **Settings → AI**
 
 ## Windows installer (for distribution)
 
@@ -72,18 +72,14 @@ Build the real installer — license screen, desktop + Start Menu shortcuts, lau
 
 ```bash
 bash scripts/build-installer.sh
-# → installer-out/Quizy-Setup-1.2.0.exe       (~2 GB, AI model included)
-#   installer-out/Quizy-Setup-1.2.0-lite.exe  (~150 MB, model downloads on first launch)
-QUIZY_BUNDLE_AI=0 bash scripts/build-installer.sh   # ~130 MB, API-key mode only
+# → installer-out/Quizy-Setup-<version>.exe  (~160 MB) + .blockmap + latest.yml for updates
 ```
 
-The first build downloads (and caches in `installer/cache/`): llama.cpp's Windows `llama-server` (Vulkan build — uses the GPU when there is one, otherwise the CPU), the `Qwen3-4B-Instruct-2507-Q3_K_S` model (1.9 GB, Apache-2.0), and Tesseract's English OCR model. NSIS installers are capped at 2 GiB, so the script checks the payload size; use `MODEL_FILE=Qwen3-4B-Instruct-2507-UD-IQ3_XXS.gguf` for a smaller model, or `LLAMA_CPP_VARIANT=cpu` / `LLAMA_CPP_TAG=b…` to change or pin the engine.
-
-The built-in AI starts on first use (5–20 s to load), uses ~3 GB RAM while running, and stops after 10 idle minutes. Expect ~20–60 s per section on a typical laptop CPU, much faster with a GPU.
+The first build downloads Tesseract's English OCR model (cached in `installer/cache/`). Put the Quizy AI key in `ai-key.txt` first, or the app will ask users for their own key.
 
 What installers get: per-user install to `%LOCALAPPDATA%\Programs\Quizy`, a first-run seed (demo account `demo@quizy.study` / `password123` + sample PDFs), user data in `%APPDATA%\Quizy` that survives updates and uninstall, full version/copyright metadata, and the branded icon on every binary.
 
-To distribute: host `Quizy-Setup-1.2.0.exe` (e.g. `https://quizy.study/downloads/Quizy-Setup.exe`) and link it from the site. Note: the exe is **unsigned**, so Windows SmartScreen will show "unknown publisher" — buyers of a code-signing certificate can drop the cert into `installer/` and set `CSC_LINK`/`CSC_KEY_PASSWORD` to sign automatically.
+To distribute: host `Quizy-Setup-<version>.exe` (e.g. `https://quizy.study/downloads/Quizy-Setup.exe`) and link it from the site. Note: the exe is **unsigned**, so Windows SmartScreen will show "unknown publisher" — buyers of a code-signing certificate can drop the cert into `installer/` and set `CSC_LINK`/`CSC_KEY_PASSWORD` to sign automatically.
 
 ### Publishing an update
 
@@ -93,7 +89,7 @@ Installed copies check `github.com/Snoopy941/Quizy` releases every few hours and
 2. Double-click `build.bat` (or `bash scripts/build-installer.sh`).
 3. `bash scripts/publish-release.sh "What's new"` — needs the [GitHub CLI](https://cli.github.com) (`gh auth login` once). The repository must be **public** for users' copies to download updates.
 
-The release carries the **lite** installer (the update channel) and the **full** installer (for first-time offline installs).
+The release carries the installer, its `.blockmap` and `latest.yml` (what installed copies check for updates).
 
 ### Code signing
 

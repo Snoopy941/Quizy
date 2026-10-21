@@ -11,13 +11,11 @@ VERSION=$(node -p "require('$ROOT/installer/package.json').version")
 NOTES="${1:-Quizy $VERSION}"
 
 command -v gh >/dev/null || { echo "Install the GitHub CLI first: https://cli.github.com (then run: gh auth login)"; exit 1; }
-for f in "Quizy-Setup-$VERSION-lite.exe" "Quizy-Setup-$VERSION-lite.exe.blockmap" latest.yml; do
+for f in "Quizy-Setup-$VERSION.exe" "Quizy-Setup-$VERSION.exe.blockmap" latest.yml; do
   [ -f "$OUT/$f" ] || { echo "Missing $OUT/$f — run build.bat first"; exit 1; }
 done
 
-ASSETS=("$OUT/Quizy-Setup-$VERSION-lite.exe" "$OUT/Quizy-Setup-$VERSION-lite.exe.blockmap" "$OUT/latest.yml")
-# GitHub release assets must be under 2 GiB; the full installer just fits.
-[ -f "$OUT/Quizy-Setup-$VERSION.exe" ] && ASSETS+=("$OUT/Quizy-Setup-$VERSION.exe")
+ASSETS=("$OUT/Quizy-Setup-$VERSION.exe" "$OUT/Quizy-Setup-$VERSION.exe.blockmap" "$OUT/latest.yml")
 
 echo "==> Creating release v$VERSION on $(cd "$ROOT" && git remote get-url origin)"
 (cd "$ROOT" && gh release create "v$VERSION" "${ASSETS[@]}" --title "Quizy $VERSION" --notes "$NOTES")

@@ -10,10 +10,6 @@ interface Dl {
   error: string | null;
 }
 interface DownloadsData {
-  engineInstalled: boolean;
-  models: { id: string; label: string; description: string; size: number; recommendedRamGb?: number; installed: boolean; active: boolean; download: Dl | null }[];
-  otherModels: { file: string; active: boolean }[];
-  whisper: { installed: boolean; size: number; download: Dl | null };
   ocr: { code: string; name: string; installed: boolean; download: Dl | null }[];
 }
 
@@ -34,7 +30,7 @@ function Progress({ d }: { d: Dl }) {
   );
 }
 
-/** Built-in AI models, voice answers and OCR languages — all optional downloads. */
+/** OCR languages for scanned documents — optional downloads. */
 export function DownloadsSettings() {
   const [data, setData] = useState<DownloadsData | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -52,7 +48,7 @@ export function DownloadsSettings() {
 
   const busy =
     data &&
-    [...data.models.map((m) => m.download), data.whisper.download, ...data.ocr.map((o) => o.download)].some((d) => d?.status === "downloading");
+    data.ocr.map((o) => o.download).some((d) => d?.status === "downloading");
   useEffect(() => {
     if (!busy) return;
     const t = setInterval(() => void load(), 1000);
@@ -75,67 +71,9 @@ export function DownloadsSettings() {
   return (
     <section className="card p-6">
       <h2 className="font-semibold">Downloads</h2>
-      <p className="mt-1 text-xs text-dim">Optional extras that run offline once downloaded. They&apos;re kept when Quizy updates.</p>
+      <p className="mt-1 text-xs text-dim">Extra languages for reading scanned PDFs and photos. They&apos;re kept when Quizy updates.</p>
 
-      {data.engineInstalled ? (
-        <div className="mt-5">
-          <p className="text-sm font-medium">Built-in AI model</p>
-          <div className="mt-2 space-y-2">
-            {data.models.map((m) => (
-              <div key={m.id} className={`rounded-xl border p-3 ${m.active ? "border-accent" : "border-line"}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold">
-                      {m.label} <span className="font-normal text-faint">· {gb(m.size)}</span>
-                      {m.active ? <span className="badge ml-2">in use</span> : null}
-                    </p>
-                    <p className="mt-0.5 text-xs text-dim">{m.description}</p>
-                  </div>
-                  <div className="flex shrink-0 gap-1.5">
-                    {m.installed && !m.active ? (
-                      <button className="btn-secondary px-3 py-1.5 text-xs" onClick={() => void act("use", m.id)}>
-                        Use
-                      </button>
-                    ) : null}
-                    {!m.installed && m.download?.status !== "downloading" ? (
-                      <button className="btn-secondary px-3 py-1.5 text-xs" onClick={() => void act("download", m.id)}>
-                        Download
-                      </button>
-                    ) : null}
-                    {m.installed && !m.active ? (
-                      <button className="btn-ghost px-2 py-1.5 text-xs" onClick={() => void act("remove", m.id)} title="Delete this model file">
-                        Remove
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
-                {m.download && m.download.status !== "done" ? <Progress d={m.download} /> : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      <div className="mt-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-sm font-medium">Voice answers</p>
-            <p className="mt-0.5 text-xs text-dim">
-              Speak your answers in study sessions. Speech recognition runs on this computer ({gb(data.whisper.size)}).
-            </p>
-          </div>
-          {data.whisper.installed ? (
-            <span className="badge shrink-0">installed</span>
-          ) : data.whisper.download?.status !== "downloading" ? (
-            <button className="btn-secondary shrink-0 px-3 py-1.5 text-xs" onClick={() => void act("download", "whisper")}>
-              Download
-            </button>
-          ) : null}
-        </div>
-        {data.whisper.download && data.whisper.download.status !== "done" ? <Progress d={data.whisper.download} /> : null}
-      </div>
-
-      <div className="mt-5">
+      <div className="mt-4">
         <p className="text-sm font-medium">OCR languages</p>
         <p className="mt-0.5 text-xs text-dim">
           For scanned PDFs and photos. Installed: {data.ocr.filter((o) => o.installed).map((o) => o.name).join(", ")}. Languages

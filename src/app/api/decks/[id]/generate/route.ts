@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
   if (!(await resolveAi(userId))) {
     return NextResponse.json(
-      { error: "AI isn't set up yet — open Settings → AI to turn on the built-in AI or add an API key.", code: "ai_not_configured" },
+      { error: "AI isn't set up yet. Open Settings, then AI, and add an API key.", code: "ai_not_configured" },
       { status: 409 }
     );
   }

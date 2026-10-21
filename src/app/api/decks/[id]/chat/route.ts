@@ -45,7 +45,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const ai = await requireAi(userId);
     if (ai.kind === "demo") {
-      return NextResponse.json({ error: "Chat needs a real AI — turn on the built-in AI or add an API key in Settings → AI." }, { status: 409 });
+      return NextResponse.json({ error: "Chat needs a real AI. Add an API key in Settings, then AI." }, { status: 409 });
     }
     const where = (p: { pageStart: number | null; pageEnd: number | null }) =>
       p.pageStart ? (p.pageEnd && p.pageEnd !== p.pageStart ? `${pageLabel(deck.sourceType, p.pageStart)}–${p.pageEnd}` : pageLabel(deck.sourceType, p.pageStart)) : null;

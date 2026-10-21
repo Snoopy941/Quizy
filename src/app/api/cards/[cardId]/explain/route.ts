@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ cardId: st
   try {
     const ai = await requireAi(userId);
     if (ai.kind === "demo") {
-      return NextResponse.json({ error: "Explanations need a real AI — turn on the built-in AI or add an API key in Settings → AI." }, { status: 409 });
+      return NextResponse.json({ error: "Explanations need a real AI. Add an API key in Settings, then AI." }, { status: 409 });
     }
     const answer = await explainCard(ai, card, card.chunk?.text ?? null, history, question, card.deck.cardLanguage);
     return NextResponse.json({ answer });

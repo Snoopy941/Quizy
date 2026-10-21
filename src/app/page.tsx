@@ -92,7 +92,7 @@ export default async function HomePage() {
         <div className="card flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-semibold">Set up AI to make cards</p>
-            <p className="mt-0.5 text-xs text-dim">Turn on the built-in offline AI or add an API key — it takes a few seconds.</p>
+            <p className="mt-0.5 text-xs text-dim">Add an API key in Settings to start making cards.</p>
           </div>
           <Link href="/settings" className="btn-secondary shrink-0">
             Open Settings <Icon name="arrowRight" />

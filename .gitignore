@@ -65,4 +65,5 @@ prisma/e2e-test.db*
 
 # Google OAuth client for "Continue with Google" (see README)
 google-oauth.json
+ai-key.txt
 client_secret_*.json

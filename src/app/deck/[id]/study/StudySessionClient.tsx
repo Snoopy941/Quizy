@@ -297,7 +297,7 @@ export function StudySessionClient({
   const toggleVoice = useCallback(async () => {
     if (!card) return;
     if (voiceAvailable === false) {
-      setVoiceMsg("Voice answers need a one-time download — Settings > Downloads > Voice answers.");
+      setVoiceMsg("Voice answers aren't available right now.");
       return;
     }
     if (recording === "recording") {

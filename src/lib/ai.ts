@@ -1,9 +1,10 @@
 /**
  * AI layer: one OpenAI-compatible chat interface over three providers.
  *
- *   builtin — the offline model bundled with the desktop app (no key needed)
- *   api     — any OpenAI-compatible endpoint: OpenAI, OpenRouter, Together,
- *             a local Ollama/LM Studio server… (key from Settings or env)
+ *   builtin — "Quizy AI": the free shared Groq key that ships with the app
+ *             (see quizy-ai.ts; no setup needed)
+ *   api     — any OpenAI-compatible endpoint: Groq, OpenAI, OpenRouter,
+ *             Gemini, a local Ollama/LM Studio server… (key from Settings or env)
  *   demo    — deterministic sample generator, only when MOCK_AI=1 (dev/tests)
  *
  * There is NO silent fallback: if the configured AI fails, callers get a
@@ -11,30 +12,32 @@
  */
 import { prisma } from "@/lib/db";
 import { CARDS_JSON_SCHEMA, parseCards, type GeneratedCard } from "@/lib/card-parse";
-import { ensureLocalServer, localAvailable, modelName, withLane, type Lane } from "@/lib/local-ai";
+import { QUIZY_AI_BASE, QUIZY_AI_LABEL, QUIZY_AI_MODELS, coolDown, cooldownMs, modelsToTry, quizyAiKey, secondsUntilFree } from "@/lib/quizy-ai";
 import { mockCards } from "@/lib/mock-ai";
 import { CARD_LANGUAGES } from "@/lib/format";
 
 export type { GeneratedCard } from "@/lib/card-parse";
 
 export type ProviderKind = "builtin" | "api" | "demo";
+/** Kept for callers that say which kind of work a request is. */
+export type Lane = "generate" | "interactive";
 
 export interface AiConfig {
   kind: ProviderKind;
   baseUrl: string;
   apiKey: string;
   model: string;
-  /** Human label for the UI, e.g. "Built-in AI (Qwen3-4B)" or "gpt-4o-mini via api.openai.com". */
+  /** Human label for the UI, e.g. "Quizy AI (free)" or "gpt-4o-mini via api.openai.com". */
   label: string;
   /** How many sections to generate in parallel. */
   concurrency: number;
-  /** Max characters of source text per request (smaller for the local model's context). */
+  /** Max characters of source text per request. */
   maxSourceChars: number;
 }
 
 export class AiNotConfiguredError extends Error {
   constructor() {
-    super("AI isn't set up yet — open Settings → AI to turn on the built-in AI or add an API key.");
+    super("AI isn't set up yet. Open Settings, then AI, and add an API key.");
     this.name = "AiNotConfiguredError";
   }
 }
@@ -67,16 +70,23 @@ function apiConfig(s: UserAiSettings | null): AiConfig | null {
 }
 
 function builtinConfig(): AiConfig | null {
-  if (!localAvailable()) return null;
+  const key = quizyAiKey();
+  if (!key) return null;
   return {
     kind: "builtin",
-    baseUrl: "",
-    apiKey: "",
-    model: modelName(),
-    label: `Built-in AI (${modelName()})`,
-    concurrency: 1,
-    maxSourceChars: 4000,
+    baseUrl: QUIZY_AI_BASE,
+    apiKey: key,
+    model: QUIZY_AI_MODELS[0],
+    label: QUIZY_AI_LABEL,
+    // Shared free limits (about 8K tokens a minute per model): two sections at a time.
+    concurrency: 2,
+    maxSourceChars: 6000,
   };
+}
+
+/** True when the user saved their own key or endpoint in Settings. */
+function hasOwnApi(s: UserAiSettings | null): boolean {
+  return Boolean(s?.aiApiKey.trim() || s?.aiBaseUrl.trim());
 }
 
 const demoConfig: AiConfig = {
@@ -94,7 +104,8 @@ export function resolveAiFromSettings(s: UserAiSettings | null): AiConfig | null
   const pref = s?.aiProvider ?? "auto";
   if (pref === "builtin") return builtinConfig();
   if (pref === "api") return apiConfig(s);
-  // auto
+  // auto: the user's own key if they added one (their own limits), else Quizy AI.
+  if (hasOwnApi(s)) return apiConfig(s);
   return builtinConfig() ?? apiConfig(s) ?? (process.env.MOCK_AI === "1" ? demoConfig : null);
 }
 
@@ -131,65 +142,105 @@ const formatSupport = new Map<string, "json_schema" | "json_object" | "none">();
 
 export async function chat(ai: AiConfig, opts: ChatOptions): Promise<string> {
   if (ai.kind === "demo") throw new Error("The demo generator can't answer free-form questions.");
-  const run = async () => {
-    const baseUrl = ai.kind === "builtin" ? `${await ensureLocalServer()}/v1` : ai.baseUrl;
-    let mode = opts.schema ? formatSupport.get(baseUrl) ?? "json_schema" : "none";
-    for (;;) {
-      const body: Record<string, unknown> = {
-        model: ai.kind === "builtin" ? "local" : ai.model,
-        messages: opts.messages,
-        temperature: opts.temperature ?? 0.3,
-        max_tokens: opts.maxTokens ?? 1500,
-        stream: false,
-      };
-      if (ai.kind === "builtin") body.cache_prompt = true;
-      if (opts.schema && mode === "json_schema") {
-        body.response_format = {
-          type: "json_schema",
-          json_schema: { name: opts.schema.name, strict: true, schema: opts.schema.schema },
-        };
-      } else if (opts.schema && mode === "json_object") {
-        body.response_format = { type: "json_object" };
-      }
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (ai.apiKey) headers.Authorization = `Bearer ${ai.apiKey}`;
-      if (ai.baseUrl.includes("openrouter.ai")) {
-        headers["HTTP-Referer"] = "https://quizy.study";
-        headers["X-Title"] = "Quizy";
-      }
-      let res: Response;
-      try {
-        res = await fetch(`${baseUrl}/chat/completions`, {
-          method: "POST",
-          headers,
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(opts.timeoutMs ?? (ai.kind === "builtin" ? 300_000 : 90_000)),
-        });
-      } catch (err) {
-        const reason = err instanceof Error && err.name === "TimeoutError" ? "timed out" : "couldn't be reached";
-        throw new Error(ai.kind === "builtin" ? `The built-in AI ${reason}.` : `The AI service ${reason} (${ai.baseUrl}).`);
-      }
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        // Endpoint doesn't support this structured-output mode → step down and retry.
-        if (res.status === 400 && opts.schema && mode !== "none" && /response_format|json_schema|schema|json_object/i.test(text)) {
-          mode = mode === "json_schema" ? "json_object" : "none";
-          formatSupport.set(baseUrl, mode);
-          continue;
-        }
-        throw new Error(friendlyHttpError(res.status, text, ai));
-      }
-      if (opts.schema) formatSupport.set(baseUrl, mode);
-      const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-      const content = data.choices?.[0]?.message?.content ?? "";
-      // Some reasoning models wrap output in <think>…</think>
-      return content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  if (ai.kind !== "builtin") return chatOnce(ai, ai.model, opts);
+  // Quizy AI: the key is shared by everyone, so when a model is rate-limited,
+  // rest it and move on to the next one.
+  let lastErr: unknown;
+  for (const model of modelsToTry()) {
+    try {
+      return await chatOnce(ai, model, opts);
+    } catch (err) {
+      if (!(err instanceof RateLimitError)) throw err;
+      coolDown(model, err.cooldownMs);
+      lastErr = err;
     }
-  };
-  return ai.kind === "builtin" ? withLane(opts.lane ?? "interactive", run) : run();
+  }
+  const wait = secondsUntilFree();
+  const when = wait > 0 && wait <= 120 ? `in about ${Math.max(1, Math.round(wait / 60) || 1)} minute${wait > 90 ? "s" : ""}` : "a bit later";
+  throw new Error(
+    `Quizy's free AI is busy right now (too many people are using it). Try again ${when}, or add your own free API key in Settings, then AI.`,
+    { cause: lastErr },
+  );
+}
+
+class RateLimitError extends Error {
+  cooldownMs: number;
+  constructor(cooldownMs: number) {
+    super("rate limited");
+    this.cooldownMs = cooldownMs;
+  }
+}
+
+async function chatOnce(ai: AiConfig, model: string, opts: ChatOptions): Promise<string> {
+  const baseUrl = ai.baseUrl;
+  let mode = opts.schema ? formatSupport.get(baseUrl) ?? "json_schema" : "none";
+  for (;;) {
+    const body: Record<string, unknown> = {
+      model,
+      messages: opts.messages,
+      temperature: opts.temperature ?? 0.3,
+      max_tokens: opts.maxTokens ?? 1500,
+      stream: false,
+    };
+    // GPT-OSS "thinks" before answering; keep that short so the answer fits.
+    if (/gpt-oss/i.test(model)) body.reasoning_effort = "low";
+    if (opts.schema && mode === "json_schema") {
+      body.response_format = {
+        type: "json_schema",
+        json_schema: { name: opts.schema.name, strict: true, schema: opts.schema.schema },
+      };
+    } else if (opts.schema && mode === "json_object") {
+      body.response_format = { type: "json_object" };
+    }
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (ai.apiKey) headers.Authorization = `Bearer ${ai.apiKey}`;
+    if (baseUrl.includes("openrouter.ai")) {
+      headers["HTTP-Referer"] = "https://quizy.study";
+      headers["X-Title"] = "Quizy";
+    }
+    let res: Response;
+    try {
+      res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(opts.timeoutMs ?? 90_000),
+      });
+    } catch (err) {
+      const reason = err instanceof Error && err.name === "TimeoutError" ? "timed out" : "couldn't be reached";
+      throw new Error(
+        ai.kind === "builtin"
+          ? `Quizy's AI ${reason}. Check your internet connection and try again.`
+          : `The AI service ${reason} (${baseUrl}).`,
+      );
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      // Endpoint doesn't support this structured-output mode → step down and retry.
+      if (res.status === 400 && opts.schema && mode !== "none" && /response_format|json_schema|schema|json_object/i.test(text)) {
+        mode = mode === "json_schema" ? "json_object" : "none";
+        formatSupport.set(baseUrl, mode);
+        continue;
+      }
+      // Request too big for this model's per-minute token budget counts as a rate limit too.
+      if (ai.kind === "builtin" && (res.status === 429 || res.status === 413)) {
+        throw new RateLimitError(cooldownMs(res.headers.get("retry-after"), text));
+      }
+      throw new Error(friendlyHttpError(res.status, text, ai));
+    }
+    if (opts.schema) formatSupport.set(baseUrl, mode);
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    const content = data.choices?.[0]?.message?.content ?? "";
+    // Some reasoning models wrap output in <think>…</think>
+    return content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  }
 }
 
 function friendlyHttpError(status: number, body: string, ai: AiConfig): string {
+  if (ai.kind === "builtin") {
+    if (status === 401 || status === 403) return "Quizy's free AI isn't available in this version. Update Quizy, or add your own API key in Settings, then AI.";
+    return `Quizy's AI had a problem (${status}). Try again in a moment.`;
+  }
   if (status === 401 || status === 403) return "The AI service rejected the API key — check it in Settings → AI.";
   if (status === 404) return `Model “${ai.model}” wasn't found at ${ai.baseUrl} — check the model name in Settings → AI.`;
   if (status === 429) return "The AI service is rate-limiting or out of credit — try again in a minute.";

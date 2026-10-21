@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Build the Quizy Windows installer (NSIS) with electron-builder.
 # Output: installer-out/Quizy-Setup-<version>.exe
-# Prereqs: Node on PATH, internet for the first run (downloads ~2 GB of AI
-# assets, cached in installer/cache). Run from repo root:
+# Prereqs: Node on PATH, internet for the first run. Run from repo root:
 #   bash scripts/build-installer.sh
-# Set QUIZY_BUNDLE_AI=0 to build without the built-in AI (~130 MB installer).
+# AI runs online ("Quizy AI", Groq). Put the shared key in ai-key.txt at the
+# repo root (kept out of git) so it ships with the app.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -23,7 +23,7 @@ echo "==> Building Next.js standalone"
 
 echo "==> Staging installer payload"
 rm -rf "$STAGE"
-mkdir -p "$OUT_APP/.next" "$STAGE/bin" "$STAGE/seed" "$STAGE/licenses" "$STAGE/ai"
+mkdir -p "$OUT_APP/.next" "$STAGE/bin" "$STAGE/seed" "$STAGE/licenses"
 
 # 1. Next.js standalone server + static + public assets + icons
 cp -r "$ROOT/.next/standalone/." "$OUT_APP/"
@@ -33,12 +33,15 @@ cp "$ROOT/assets/quizy-icon.png" "$OUT_APP/quizy-icon.png"
 cp "$ROOT/assets/quizy.ico" "$OUT_APP/quizy.ico"
 # "Continue with Google": the OAuth client file from Google Cloud (kept out of git)
 if [ -f "$ROOT/google-oauth.json" ]; then cp "$ROOT/google-oauth.json" "$OUT_APP/google-oauth.json"; echo "==> Google sign-in: on"; else echo "==> Google sign-in: off (no google-oauth.json)"; fi
+# "Quizy AI": the shared Groq key (kept out of git)
+if [ -f "$ROOT/ai-key.txt" ]; then cp "$ROOT/ai-key.txt" "$OUT_APP/ai-key.txt"; echo "==> Quizy AI: on"; else echo "!! Quizy AI: off (no ai-key.txt) - users will need their own API key"; fi
 rm -f "$OUT_APP/.env"   # launcher sets env explicitly
 # OCR engine is loaded at runtime; make sure all of it ships
 node "$ROOT/scripts/copy-runtime-deps.js" "$OUT_APP" tesseract.js tesseract.js-core
 
-# 1b. Built-in offline AI (llama.cpp + model) and the OCR language model
-FETCH_AI="${QUIZY_BUNDLE_AI:-1}" bash "$ROOT/scripts/fetch-ai.sh" "$STAGE/ai" "$OUT_APP/ocr"
+# 1b. The English OCR language model (scanned PDFs work offline)
+FETCH_AI=0 bash "$ROOT/scripts/fetch-ai.sh" "$STAGE/ai-unused" "$OUT_APP/ocr"
+rm -rf "$STAGE/ai-unused"
 
 # 2. Node runtime for the server process
 cp "/c/Program Files/nodejs/node.exe" "$STAGE/bin/node.exe"
@@ -80,9 +83,7 @@ Quizy ships with open-source software. Credits and licenses:
 - bcryptjs: MIT License
 - jose: MIT License
 - canvas-confetti: ISC License
-- llama.cpp (built-in AI engine): MIT License — https://github.com/ggml-org/llama.cpp
-- Qwen3-4B-Instruct-2507 (built-in AI model): Apache License 2.0 — https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507
-  (GGUF quantization by Unsloth — https://huggingface.co/unsloth)
+- Fredoka and DM Sans fonts: SIL Open Font License 1.1
 - tesseract.js / Tesseract OCR + tessdata_fast English model: Apache License 2.0 — https://github.com/naptha/tesseract.js
 EOF
 
@@ -98,41 +99,12 @@ mkdir -p "$ROOT/installer-out"
 echo "==> Installing electron-builder + updater (first run downloads ~100MB)"
 (cd "$INST" && npm i --no-audit --no-fund 2>&1 | tail -1)
 
-build() { # $1 = artifact suffix ("" or "-lite"), $2 = targets
-  (cd "$INST" && npx electron-builder --win $2 --x64 --publish never \
-      -c.nsis.artifactName="Quizy-Setup-\${version}$1.\${ext}" \
-      -c.portable.artifactName="Quizy-\${version}$1-portable.\${ext}" 2>&1 | tail -25)
-}
-
-# --- Lite installer: engine + OCR, AI model downloads on first launch. Used for auto-updates.
-HOLD="$INST/model-hold"
-mkdir -p "$HOLD"
-mv "$STAGE"/ai/*.gguf "$HOLD"/ 2>/dev/null || true
-echo "==> Building lite installer (AI model downloads on first launch)"
-build "-lite" "nsis portable"
-cp "$OUT/Quizy-Setup-$VERSION-lite.exe" "$OUT/Quizy-Setup-$VERSION-lite.exe.blockmap" "$OUT/latest.yml" "$ROOT/installer-out/"
-cp "$OUT/Quizy-$VERSION-lite-portable.exe" "$ROOT/installer-out/" 2>/dev/null || true
-
-# --- Full installer: everything bundled, works offline from the first launch.
-if ls "$HOLD"/*.gguf >/dev/null 2>&1; then
-  mv "$HOLD"/*.gguf "$STAGE/ai/"
-  # NSIS installers can't exceed 2 GiB of compressed data. The model barely
-  # compresses; the app compresses to roughly 45%. Skip if it can't fit.
-  AI_BYTES=$(du -sb "$STAGE/ai" | cut -f1)
-  ALL_BYTES=$(du -sb "$STAGE" | cut -f1)
-  EST=$(( AI_BYTES + (ALL_BYTES - AI_BYTES) * 45 / 100 ))
-  echo "==> Estimated full installer size: $((EST / 1000000)) MB (NSIS limit ~2147 MB)"
-  if [ "$EST" -gt 2120000000 ]; then
-    echo "!! Full installer would be too large for NSIS — skipping it. Use a smaller model, e.g."
-    echo "   MODEL_FILE=Qwen3-4B-Instruct-2507-UD-IQ3_XXS.gguf bash scripts/build-installer.sh"
-  else
-    echo "==> Building full installer (AI included)"
-    rm -f "$OUT/latest.yml"
-    build "" "nsis"
-    cp "$OUT/Quizy-Setup-$VERSION.exe" "$ROOT/installer-out/"
-  fi
-fi
-rmdir "$HOLD" 2>/dev/null || true
+echo "==> Building the installer"
+(cd "$INST" && npx electron-builder --win nsis --x64 --publish never \
+    -c.nsis.artifactName="Quizy-Setup-\${version}.\${ext}" 2>&1 | tail -25)
+# One setup file (plus what auto-update needs). Clear out older builds.
+rm -f "$ROOT"/installer-out/Quizy-Setup-*.exe "$ROOT"/installer-out/Quizy-Setup-*.blockmap "$ROOT"/installer-out/Quizy-*-portable.exe "$ROOT/installer-out/latest.yml"
+cp "$OUT/Quizy-Setup-$VERSION.exe" "$OUT/Quizy-Setup-$VERSION.exe.blockmap" "$OUT/latest.yml" "$ROOT/installer-out/"
 
 echo ""
 ls -la "$ROOT"/installer-out/ 2>/dev/null

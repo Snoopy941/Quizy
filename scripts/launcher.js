@@ -45,22 +45,11 @@ function runningPort() {
   return PREFERRED_PORT;
 }
 
-// Built-in offline AI: llama.cpp server + bundled model in <root>\ai, and the
-// OCR language model in <root>\app\ocr. Both optional — the app works without.
-const AI_DIR = path.join(ROOT, "ai");
-const LLAMA_BIN = path.join(AI_DIR, process.platform === "win32" ? "llama-server.exe" : "llama-server");
-function findModel() {
-  try {
-    const ggufs = fs.readdirSync(AI_DIR).filter((f) => f.toLowerCase().endsWith(".gguf"));
-    return ggufs.length ? path.join(AI_DIR, ggufs.sort()[0]) : null;
-  } catch (_) {
-    return null;
-  }
-}
+// OCR language model ships in <root>\app\ocr (scanned PDFs work offline).
 const OCR_DIR = path.join(APP, "ocr");
 
-// Big downloads (AI models, voice, OCR languages) live outside the install
-// folder so app updates never delete them — and outside the roaming profile.
+// Optional downloads (extra OCR languages) live outside the install folder
+// so app updates never delete them, and outside the roaming profile.
 const MODELS_DIR = INSTALLED
   ? path.join(process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"), "Quizy", "models")
   : path.join(DATA, "models");
@@ -68,22 +57,16 @@ try {
   fs.mkdirSync(MODELS_DIR, { recursive: true });
 } catch (_) {}
 
-// First run of the full installer: move the bundled model into the models
-// folder (a rename on the same drive — instant). If that fails, use it in place.
-let MODEL = findModel();
-if (MODEL) {
-  const target = path.join(MODELS_DIR, path.basename(MODEL));
-  try {
-    if (fs.existsSync(target)) {
-      fs.rmSync(MODEL, { force: true });
-    } else {
-      fs.renameSync(MODEL, target);
+// Quizy no longer runs AI on this computer ("Quizy AI" is online). Free up the
+// space older versions used: the offline AI model (~2 GB) and voice model.
+try {
+  for (const f of fs.readdirSync(MODELS_DIR)) {
+    if (f.toLowerCase().endsWith(".gguf") || f.toLowerCase().endsWith(".gguf.part")) {
+      fs.rmSync(path.join(MODELS_DIR, f), { force: true });
     }
-    MODEL = null;
-  } catch (_) {
-    /* different drive or read-only: keep using the bundled copy */
   }
-}
+  fs.rmSync(path.join(MODELS_DIR, "whisper"), { recursive: true, force: true });
+} catch (_) {}
 
 function fatal(msg) {
   try {
@@ -303,9 +286,6 @@ function startAppWithPort() {
       QUIZY_QUIT_TOKEN: quitToken,
       QUIZY_MODELS_DIR: MODELS_DIR,
       QUIZY_DATA_DIR: DATA,
-      ...(fs.existsSync(LLAMA_BIN) ? { QUIZY_LLAMA_BIN: LLAMA_BIN } : {}),
-      ...(MODEL ? { QUIZY_MODEL_PATH: MODEL } : {}),
-      QUIZY_LLAMA_PORT: String(PORT + 1),
       ...(fs.existsSync(OCR_DIR) ? { QUIZY_OCR_DIR: OCR_DIR } : {}),
       NEXT_TELEMETRY_DISABLED: "1",
     },
